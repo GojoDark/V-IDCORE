@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="VØIDCORE — ferramentas competitivas para CS2, VALORANT e Rainbow Six Siege.">
+  <title>VØIDCORE — Precision. Performance. Control.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="#home"><span>VØID</span>CORE</a>
+  <nav>
+    <a href="#cs2">CS2</a><a href="#valorant">VALORANT</a><a href="#r6">R6</a>
+  </nav>
+</header>
+
+<main id="home">
+  <section class="hero">
+    <div class="badge">COMPETITIVE FPS TOOLKIT</div>
+    <h1>PRECISION.<br><span>PERFORMANCE.</span><br>CONTROL.</h1>
+    <p>Ferramentas rápidas e limpas para configurar sua mira e sensibilidade sem enrolação.</p>
+    <div class="games">
+      <a href="#cs2">CS2</a><a href="#valorant">VALORANT</a><a href="#r6">RAINBOW SIX SIEGE</a>
+    </div>
+  </section>
+
+  <div class="ad">ESPAÇO PARA ANÚNCIO • discreto e sem pop-up</div>
+
+  <section id="cs2" class="game">
+    <div class="section-head"><div><small>COUNTER-STRIKE 2</small><h2>CS2 CORE</h2></div><span class="pill">LIVE</span></div>
+    <div class="grid">
+      <article class="tool wide">
+        <h3>Crosshair Generator</h3>
+        <div class="cross-layout">
+          <div class="controls">
+            <label>Tamanho <input id="csSize" type="range" min="2" max="18" value="7"></label>
+            <label>Gap <input id="csGap" type="range" min="0" max="14" value="5"></label>
+            <label>Espessura <input id="csThick" type="range" min="1" max="6" value="2"></label>
+            <label>Cor <input id="csColor" type="color" value="#b34cff"></label>
+          </div>
+          <div class="preview"><div id="csCross" class="crosshair"></div></div>
+        </div>
+        <button onclick="copyCS()">Copiar comandos</button><code id="csCode"></code>
+      </article>
+      <article class="tool"><h3>eDPI</h3><label>DPI <input id="csDpi" type="number" value="800"></label><label>Sens <input id="csSens" type="number" step=".01" value="1"></label><strong id="csEdpi">800 eDPI</strong></article>
+      <article class="tool"><h3>cm/360°</h3><p>Calculado a partir do DPI e da sensibilidade do CS2.</p><strong id="csCm">51.95 cm</strong></article>
+    </div>
+  </section>
+
+  <section id="valorant" class="game">
+    <div class="section-head"><div><small>VALORANT</small><h2>VALORANT CORE</h2></div><span class="pill">LIVE</span></div>
+    <div class="grid">
+      <article class="tool wide">
+        <h3>Crosshair Generator</h3>
+        <div class="cross-layout">
+          <div class="controls">
+            <label>Comprimento <input id="vSize" type="range" min="2" max="18" value="6"></label>
+            <label>Offset <input id="vGap" type="range" min="0" max="14" value="4"></label>
+            <label>Espessura <input id="vThick" type="range" min="1" max="6" value="2"></label>
+            <label>Cor <input id="vColor" type="color" value="#00e5ff"></label>
+          </div>
+          <div class="preview"><div id="vCross" class="crosshair"></div></div>
+        </div>
+        <button onclick="copyVal()">Copiar código</button><code id="vCode"></code>
+      </article>
+      <article class="tool"><h3>eDPI</h3><label>DPI <input id="vDpi" type="number" value="800"></label><label>Sens <input id="vSens" type="number" step=".001" value=".35"></label><strong id="vEdpi">280 eDPI</strong></article>
+      <article class="tool"><h3>CS2 → VALORANT</h3><label>Sens CS2 <input id="convertCS" type="number" step=".01" value="1"></label><strong id="convertVal">0.314 VAL</strong><p>Conversão aproximada por distância angular.</p></article>
+    </div>
+  </section>
+
+  <section id="r6" class="game">
+    <div class="section-head"><div><small>RAINBOW SIX SIEGE</small><h2>R6 CORE</h2></div><span class="pill">BETA</span></div>
+    <div class="grid">
+      <article class="tool"><h3>Hipfire eDPI</h3><label>DPI <input id="rDpi" type="number" value="800"></label><label>Hipfire <input id="rSens" type="number" value="10"></label><strong id="rEdpi">8000</strong></article>
+      <article class="tool"><h3>ADS Workspace</h3><label>ADS alvo (%) <input id="rAds" type="range" min="1" max="100" value="50"></label><strong id="rAdsOut">50%</strong><p>Base pronta para o módulo avançado por óptica.</p></article>
+      <article class="tool"><h3>Config Analyzer</h3><p>Área preparada para importar e analisar configurações do R6.</p><button disabled>Em breve</button></article>
+    </div>
+  </section>
+
+  <div class="ad">ESPAÇO PARA ANÚNCIO • rodapé</div>
+</main>
+
+<footer><b>VØIDCORE</b><span>Precision. Performance. Control.</span><small>V1 • ferramentas locais, sem conta necessária</small></footer>
+<script src="app.js"></script>
+</body>
+</html>
