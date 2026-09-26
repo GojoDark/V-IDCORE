@@ -21,7 +21,25 @@ function csPixelCross(el,size,gap,thick,color,dot,outlineMode,style,spread){
  if(dot)add(cx-thick/2,cy-thick/2,thick,thick);
 }
 function csUpdate(){
- if(!$('csDpi'))return;let dpi=+$('csDpi').value||0,s=+$('csSens').value||0,cm=cm360(dpi,s,GAME.cs2.yaw);$('csEdpi').textContent=fmt(dpi*s,0)+' eDPI';$('csCm').textContent=fmt(cm)+' cm/360°';
+ if(!$('csDpi'))return;let dpi=+$('csDpi').value||0,s=+$('csSens').value||0,cm=cm360(dpi,s,GAME.cs2.yaw),edpi=dpi*s;
+ $('csEdpi').textContent=fmt(edpi,0);$('csCm').textContent=fmt(cm)+' cm/360°';
+ if($('csGoal')){
+   let goal=$('csGoal').value,style=$('csAimStyle').value,pad=$('csPad').value;
+   let base={balanced:[27,45],recoil:[32,52],flick:[22,38],tracking:[27,46]}[goal];
+   let loCm=base[0],hiCm=base[1];
+   if(style==='arm'){loCm+=3;hiCm+=5} if(style==='wrist'){loCm=Math.max(16,loCm-5);hiCm-=5}
+   if(pad==='small'){loCm=Math.max(16,loCm-6);hiCm=Math.min(hiCm,36)} if(pad==='large'&&style!=='wrist'){hiCm+=3}
+   let fast=sensForCm(loCm,dpi,GAME.cs2.yaw),slow=sensForCm(hiCm,dpi,GAME.cs2.yaw);
+   let profile=cm<20?'Muito alta':cm<28?'Alta':cm<=45?'Equilibrada':cm<=60?'Baixa':'Muito baixa';
+   $('csSensProfile').textContent=profile;
+   $('csTestRange').textContent=`${fmt(slow,3)} – ${fmt(fast,3)} sens  •  ${loCm}–${hiCm} cm/360°`;
+   let goalText={balanced:'equilíbrio entre microajuste, tracking e giros',recoil:'mais margem física para microcorreções e controle de spray',flick:'deslocamentos mais curtos para flicks e trocas rápidas de alvo',tracking:'correções contínuas suaves sem exigir deslocamento extremo'}[goal];
+   let relation=cm<loCm?'Sua sens atual está mais rápida que a faixa de teste sugerida.':cm>hiCm?'Sua sens atual está mais lenta que a faixa de teste sugerida.':'Sua sens atual já cai dentro da faixa de teste sugerida.';
+   $('csAdvice').innerHTML=`<b>${relation}</b> Para ${goalText}, teste mudanças pequenas e compare consistência — não troque a sens inteira de uma vez.`;
+   let trade=style==='wrist'?'Como você priorizou pulso, a faixa evita sensibilidades muito lentas que exigiriam deslocamento grande.':style==='arm'?'Como você priorizou braço, a faixa aceita mais cm/360 para ganhar controle fino.':'Braço + pulso permite uma faixa intermediária com boa margem para correções e giros.';
+   if(pad==='small')trade+=' O mousepad pequeno limita o teto de cm/360 para não faltar espaço físico.'; else if(pad==='large')trade+=' O mousepad grande permite testar sensibilidades mais lentas sem limitar tanto o movimento.';
+   $('csTradeoff').textContent=trade;
+ }
  if(!$('csSize'))return;
  let z=+$('csSize').value,g=+$('csGap').value,t=+$('csThick').value,c=$('csColor').value,d=$('csDot').checked,om=$('csOutlineMode').value,style=$('csStyle').value,spread=+$('csSpread').value,res=$('csResolution').value;
  $('csSizeV').textContent=z+' px';$('csGapV').textContent=g+' px';$('csThickV').textContent=t+' px';$('csSpreadV').textContent=spread+' px';$('csSpreadRow').classList.toggle('hidden',!(style==='dynamic'||style==='dynamicQuad'));$('csResLabel').textContent=res;$('csScaleBase').textContent=res;
@@ -37,4 +55,4 @@ function r6Update(){if(!$('rDpi'))return;let dpi=+$('rDpi').value||0,s=+$('rSens
 function converter(){if(!$('fromGame'))return;let a=GAME[$('fromGame').value],b=GAME[$('toGame').value],dpi=+$('convDpi').value||0,s=+$('convSens').value||0;let cm=cm360(dpi,s,a.yaw),out=sensForCm(cm,dpi,b.yaw);$('convResult').textContent=fmt(out,b.dec);$('convMeta').textContent=`${a.name} ${fmt(s,a.dec)} → ${b.name} ${fmt(out,b.dec)} • ${fmt(cm)} cm/360° preservados`;}
 function advisor(){if(!$('advDpi'))return;let game=GAME[$('advGame').value],dpi=+$('advDpi').value||0,s=+$('advSens').value||0,goal=$('advGoal').value,cm=cm360(dpi,s,game.yaw);let target=goal==='recoil'?[30,50]:goal==='flick'?[20,38]:goal==='tracking'?[25,45]:[25,45];let lo=sensForCm(target[1],dpi,game.yaw),hi=sensForCm(target[0],dpi,game.yaw);let label=cm<20?'muito alta':cm<28?'alta':cm<=50?'moderada/baixa':'muito baixa';$('advCurrent').textContent=`${fmt(cm)} cm/360° • sens ${label}`;$('advRange').textContent=`Teste inicial: ${fmt(lo,game.dec)} – ${fmt(hi,game.dec)}`;let why=goal==='recoil'?'Uma faixa mais lenta tende a dar mais margem física para microcorreções durante sprays; exige mais mousepad e braço.':goal==='flick'?'Uma faixa intermediária/rápida reduz o deslocamento para flicks, mas aumenta a precisão física exigida.':goal==='tracking'?'Uma faixa intermediária costuma equilibrar correções contínuas com alcance de movimento.':'A faixa equilibrada evita extremos e serve como ponto de partida, não como “sens mágica”.';$('advWhy').textContent=why;}
 function bind(ids,fn){ids.forEach(id=>$(id)?.addEventListener('input',fn));ids.forEach(id=>$(id)?.addEventListener('change',fn));fn()}
-document.addEventListener('DOMContentLoaded',()=>{bind(['csDpi','csSens','csSize','csGap','csThick','csColor','csDot','csOutlineMode','csStyle','csSpread','csResolution'],csUpdate);document.querySelectorAll('[data-cs-state]').forEach(b=>b.addEventListener('click',()=>{csPreviewState=b.dataset.csState;document.querySelectorAll('[data-cs-state]').forEach(x=>x.classList.toggle('active',x===b));csUpdate()}));bind(['vDpi','vSens','vSize','vGap','vThick','vColor','vDot','vOutline'],valUpdate);bind(['rDpi','rSens','rMult'],r6Update);bind(['fromGame','toGame','convDpi','convSens'],converter);bind(['advGame','advDpi','advSens','advGoal'],advisor);});
+document.addEventListener('DOMContentLoaded',()=>{bind(['csDpi','csSens','csGoal','csAimStyle','csPad','csSize','csGap','csThick','csColor','csDot','csOutlineMode','csStyle','csSpread','csResolution'],csUpdate);document.querySelectorAll('[data-cs-state]').forEach(b=>b.addEventListener('click',()=>{csPreviewState=b.dataset.csState;document.querySelectorAll('[data-cs-state]').forEach(x=>x.classList.toggle('active',x===b));csUpdate()}));bind(['vDpi','vSens','vSize','vGap','vThick','vColor','vDot','vOutline'],valUpdate);bind(['rDpi','rSens','rMult'],r6Update);bind(['fromGame','toGame','convDpi','convSens'],converter);bind(['advGame','advDpi','advSens','advGoal'],advisor);});
