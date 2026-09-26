@@ -1,24 +1,21 @@
-# VØIDCORE V1
+# VØIDCORE V2 Preview
 
-Protótipo funcional e estático.
+Estrutura inicial da V2 do VØIDCORE.
 
-## Abrir
-Abra `index.html` no navegador.
+- `index.html` — hub principal
+- `cs2.html` — CS2 CORE
+- `valorant.html` — VALORANT CORE
+- `r6.html` — R6 CORE
+- `lab.html` — VØID LAB
+- `style.css` — visual compartilhado
+- `app.js` — cálculos e componentes
 
-## Publicar grátis no GitHub Pages
-Envie `index.html`, `style.css` e `app.js` para um repositório e habilite GitHub Pages.
+## Matemática de sensibilidade
+O projeto não compara o número bruto de sensibilidade entre jogos. Ele converte para cm/360° e volta para a escala do jogo de destino.
 
-## Incluído
-- Home VØIDCORE
-- Hub CS2
-- Crosshair visual CS2
-- eDPI + cm/360 CS2
-- Hub VALORANT
-- Crosshair visual VALORANT
-- eDPI e conversão CS2 → VALORANT
-- Hub R6
-- eDPI/hipfire e workspace ADS
-- Espaços discretos reservados para anúncios
-- Layout responsivo
+Constantes usadas nesta preview:
+- CS2: yaw padrão `0.022`
+- VALORANT: yaw `0.07`
+- R6 hipfire: `MouseSensitivityMultiplierUnit` padrão `0.02` (configurável na página R6)
 
-Observação: códigos de crosshair e módulos R6 são uma base V1 e devem ser validados/expandidos antes de uso público como ferramenta definitiva.
+R6 ADS/scopes fica separado porque exige tratamento específico e não deve ser apresentado como uma conversão hipfire simples.
