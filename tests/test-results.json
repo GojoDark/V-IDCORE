@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "routes": 13,
+  "widths": [
+    1440,
+    1024,
+    768,
+    390,
+    320
+  ],
+  "checks": [
+    "65 route/viewport combinations",
+    "CS conditional fields",
+    "zero opacity",
+    "atomic imports and invalid inputs",
+    "CS JSON export/import",
+    "VAL primary codec round trip",
+    "local preset persistence",
+    "clipboard copy",
+    "CFG download",
+    "viewmodel transforms",
+    "conversion math and DPI",
+    "R6 measured reference",
+    "share link reload",
+    "guided calibration",
+    "A/B history",
+    "empty/error states",
+    "mobile navigation",
+    "no page errors"
+  ]
+}

@@ -1,49 +1,23 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VALORANT CORE — VØIDCORE</title><link rel="stylesheet" href="style.css"></head><body><header><a class="brand" href="index.html"><span>VØID</span>CORE</a><nav class="core-nav" data-active="valorant"><span class="nav-indicator" aria-hidden="true"></span><a data-core="cs2" href="cs2.html">CS2</a><a data-core="valorant" href="valorant.html">VALORANT</a><a data-core="r6" href="r6.html">R6</a><a data-core="lab" class="lablink" href="lab.html">VØID LAB</a></nav></header><main>
-<section class="section"><div class="section-head"><div><small>VALORANT / RESEARCHED</small><h2>VALORANT CORE</h2><p class="muted">Crosshair Studio, import/export de código, preview dinâmico, sensibilidade e presets. Onde a Riot não publica especificação formal, o VØIDCORE marca o codec como documentado pela comunidade em vez de fingir que é oficial.</p></div><span class="pill">VAL CORE 3.2</span></div>
-<div class="status-strip"><span class="status ok">VALIDADO: opções de mira e import/export existem no jogo</span><span class="status derived">DERIVADO: codec semicolonado é comunitário</span><span class="status sim">SIMULAÇÃO: preview de movimento/tiro</span></div>
-<div class="grid">
-<article class="tool hero-tool"><div class="tool-title"><div><div class="kicker">CROSSHAIR / PRIMARY</div><h3>Crosshair Studio</h3></div><span class="pixel-badge">PRIMARY</span></div>
-<div class="val-presetbar"><button class="state" data-v-preset="micro">MICRO</button><button class="state" data-v-preset="classic">CLÁSSICA</button><button class="state" data-v-preset="dot">DOT</button><button class="state" data-v-preset="dynamic">TREINO DINÂMICO</button></div>
-<div class="cross-layout"><div class="controls val-controls">
-<label>Cor personalizada <input id="vColor" type="color" value="#00ffff"></label>
-<label>Opacidade geral <span><input id="vOpacity" type="range" min="0.05" max="1" step="0.05" value="1"><b id="vOpacityV">100%</b></span></label>
-<label>Outline <input id="vOutline" type="checkbox"></label>
-<label id="vOutlineOpacityRow">Opacidade outline <span><input id="vOutlineOpacity" type="range" min="0" max="1" step="0.05" value="0.5"><b id="vOutlineOpacityV">50%</b></span></label>
-<label id="vOutlineThicknessRow">Espessura outline <span><input id="vOutlineThickness" type="range" min="1" max="6" value="1"><b id="vOutlineThicknessV">1</b></span></label>
-<label>Dot central <input id="vDot" type="checkbox"></label>
-<label id="vDotOpacityRow">Opacidade dot <span><input id="vDotOpacity" type="range" min="0" max="1" step="0.05" value="1"><b id="vDotOpacityV">100%</b></span></label>
-<label id="vDotSizeRow">Espessura dot <span><input id="vDotSize" type="range" min="1" max="6" value="2"><b id="vDotSizeV">2</b></span></label>
-<label>Linhas internas <input id="vInner" type="checkbox" checked></label>
-<label id="vInnerHRow">Comprimento interno H <span><input id="vInnerH" type="range" min="0" max="20" value="4"><b id="vInnerHV">4</b></span></label>
-<label id="vInnerVRow">Comprimento interno V <span><input id="vInnerV" type="range" min="0" max="20" value="4"><b id="vInnerVV">4</b></span></label>
-<label id="vInnerThickRow">Espessura interna <span><input id="vInnerThick" type="range" min="0" max="10" value="1"><b id="vInnerThickV">1</b></span></label>
-<label id="vInnerGapRow">Offset interno <span><input id="vInnerGap" type="range" min="0" max="20" value="2"><b id="vInnerGapV">2</b></span></label>
-<label id="vInnerOpacityRow">Opacidade interna <span><input id="vInnerOpacity" type="range" min="0" max="1" step="0.05" value="1"><b id="vInnerOpacityV">100%</b></span></label>
-<label id="vMoveErrorRow">Erro de movimento <input id="vMoveError" type="checkbox"></label>
-<label id="vMoveMultRow">Multiplicador movimento <span><input id="vMoveMult" type="range" min="0" max="3" step="0.01" value="1"><b id="vMoveMultV">1.00</b></span></label>
-<label id="vFireErrorRow">Erro de disparo <input id="vFireError" type="checkbox"></label>
-<label id="vFireMultRow">Multiplicador disparo <span><input id="vFireMult" type="range" min="0" max="3" step="0.01" value="1"><b id="vFireMultV">1.00</b></span></label>
-<label>Linhas externas <input id="vOuter" type="checkbox"></label>
-<label id="vOuterHRow">Comprimento externo H <span><input id="vOuterH" type="range" min="0" max="20" value="2"><b id="vOuterHV">2</b></span></label>
-<label id="vOuterVRow">Comprimento externo V <span><input id="vOuterV" type="range" min="0" max="20" value="2"><b id="vOuterVV">2</b></span></label>
-<label id="vOuterThickRow">Espessura externa <span><input id="vOuterThick" type="range" min="0" max="10" value="2"><b id="vOuterThickV">2</b></span></label>
-<label id="vOuterGapRow">Offset externo <span><input id="vOuterGap" type="range" min="0" max="40" value="10"><b id="vOuterGapV">10</b></span></label>
-<label id="vOuterOpacityRow">Opacidade externa <span><input id="vOuterOpacity" type="range" min="0" max="1" step="0.05" value="0.35"><b id="vOuterOpacityV">35%</b></span></label>
-<label id="vOuterMoveErrorRow">Movimento externo <input id="vOuterMoveError" type="checkbox"></label>
-<label id="vOuterMoveMultRow">Mult. movimento externo <span><input id="vOuterMoveMult" type="range" min="0" max="3" step="0.01" value="1"><b id="vOuterMoveMultV">1.00</b></span></label>
-<label id="vOuterFireErrorRow">Disparo externo <input id="vOuterFireError" type="checkbox"></label>
-<label id="vOuterFireMultRow">Mult. disparo externo <span><input id="vOuterFireMult" type="range" min="0" max="3" step="0.01" value="1"><b id="vOuterFireMultV">1.00</b></span></label>
-</div>
-<div><div class="preview val-preview tactical-preview"><div class="preview-meta"><span>PRIMARY</span><span id="vStateLabel">PARADO</span></div><div class="val-target target-a"></div><div class="val-cover cover-a"></div><div id="vCross" class="crosshair val-cross"></div><div class="shot-flash" id="vShotFlash"></div></div><div class="preview-states"><button type="button" class="state active" data-v-state="idle">PARADO</button><button type="button" class="state" data-v-state="move">CORRENDO</button><button type="button" class="state" data-v-state="fire">ATIRANDO</button><button type="button" class="state" data-v-state="auto">AUTO</button></div><div class="notice compact">O preview responde aos multiplicadores de erro configurados. É uma simulação visual de comportamento, não o cone balístico exato de uma arma específica.</div></div></div>
-<div class="code-head"><span>CÓDIGO DE PERFIL</span><small>Formato semicolonado usado pelo VALORANT. A existência de import/export é oficial; a especificação detalhada do codec é comunitária.</small></div><textarea id="vCode" class="codebox" rows="4" spellcheck="false"></textarea><div class="button-row"><button id="vGenerate">Gerar código</button><button id="vImport">Importar código</button><button id="vCopyCode">Copiar código</button><button id="vSavePreset">Salvar preset</button></div><p class="muted" id="vCodecStatus">Codec: pronto.</p></article>
-
-<article class="tool"><h3>Sensibilidade</h3><label class="row">DPI <input id="vDpi" type="number" value="2000" min="1"></label><label class="row">Sens VAL <input id="vSens" type="number" step=".001" value=".251" min="0.001"></label><strong id="vEdpi"></strong><p id="vCm"></p><p class="muted">Para equivalência entre jogos, use cm/360 no Sensi Hub. eDPI só é comparável dentro do próprio jogo.</p><a class="btn" href="lab.html">Abrir Sensi Hub →</a></article>
-
-<article class="tool"><h3>Perfis do jogo</h3><p>O VALORANT permite múltiplos perfis de mira e importação/exportação por código. Também é possível copiar a mira do jogador observado com <b>/crosshair copy</b> ou <b>/cc</b>.</p><p class="muted">A Riot adicionou cor personalizada, comprimentos horizontal/vertical independentes e até 15 perfis. O VØIDCORE acompanha essas opções no editor principal.</p></article>
-
-<article class="tool"><h3>ADS e sniper</h3><label class="row">Usar Primary no ADS <input id="vUsePrimaryAds" type="checkbox" checked></label><label class="row">Cor do ponto sniper <input id="vSniperColor" type="color" value="#ff0000"></label><label class="row">Opacidade sniper <input id="vSniperOpacity" type="range" min="0" max="1" step="0.05" value="0.75"></label><label class="row">Espessura sniper <input id="vSniperThickness" type="range" min="1" max="6" step="1" value="1"></label><div class="sniper-preview"><span id="vSniperDot"></span></div><p class="muted">Preview separado. O gerador principal prioriza o bloco Primary; opções avançadas de ADS/sniper só entram no código quando mapeadas com segurança.</p></article>
-
-<article class="tool"><h3>Presets locais</h3><p>Salve configurações no navegador para comparar sem depender do jogo.</p><div id="vSavedList" class="saved-list"></div><button id="vClearSaved" class="ghost">Limpar presets locais</button></article>
-
-<article class="tool"><h3>O que é oficial x derivado</h3><p><b>Oficial Riot:</b> customização avançada, perfis, códigos de import/export, cor hex personalizada, linhas H/V independentes e /cc.</p><p><b>Comunitário:</b> nomes internos das chaves do código e sua serialização detalhada.</p><p><b>Simulação VØIDCORE:</b> animação do preview e cenário tático.</p></article>
-</div></section></main><footer><b>VØIDCORE / VALORANT</b><span>Precision. Performance. Control.</span></footer><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0b0c10" />
+    <meta
+      name="description"
+      content="VØIDCORE V4 — ferramentas de precisão para CS2, VALORANT e Rainbow Six Siege."
+    />
+    <title>VØIDCORE — Tools for a higher standard</title>
+    <link rel="icon" href="assets/symbol.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="engine.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Pular para o conteúdo</a>
+    <div id="app"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <noscript>Ative JavaScript para usar as ferramentas VØIDCORE.</noscript>
+  </body>
+</html>

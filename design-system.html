@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Design system — VØIDCORE V4</title>
+    <link rel="icon" href="assets/symbol.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main style="max-width: 1100px">
+      <a class="button small ghost" href="index.html">← Workspace</a>
+      <div class="page-head" style="margin-top: 36px">
+        <div>
+          <div class="eyebrow">VØIDCORE / V4</div>
+          <h1>Uma linguagem. Todo o workspace.</h1>
+          <p>Referência visual dos tokens, componentes e estados.</p>
+        </div>
+      </div>
+      <img
+        src="assets/wordmark.svg"
+        alt="VØIDCORE"
+        style="width: 300px; max-width: 100%; margin-bottom: 36px"
+      />
+      <div class="compare-grid">
+        <section class="control-panel">
+          <h2>Controles</h2>
+          <div class="divider"></div>
+          <div class="field">
+            <span class="field-head"
+              ><label for="demoSens">Sensibilidade</label
+              ><button
+                class="help"
+                aria-label="Use seu valor atual como referência"
+                data-help="Use seu valor atual como referência."
+              >
+                ⓘ
+              </button></span
+            ><input id="demoSens" type="number" value="0.8" />
+          </div>
+          <div class="field">
+            <span class="field-head"
+              ><label for="demoRange">Espessura</label
+              ><output id="demoOutput" for="demoRange">2</output></span
+            ><input id="demoRange" type="range" min="1" max="8" value="2" />
+          </div>
+          <div class="field">
+            <span class="field-head"><label for="demoSelect">Geometria</label></span
+            ><select id="demoSelect">
+              <option>Cruz estática</option>
+              <option>Ponto</option>
+            </select>
+          </div>
+          <div class="field check">
+            <span class="field-head"><label for="demoCheck">Ponto central</label></span
+            ><input id="demoCheck" type="checkbox" checked />
+          </div>
+          <details>
+            <summary>Ajustes avançados</summary>
+            <p class="hint">Controles secundários aparecem sob demanda.</p>
+          </details>
+        </section>
+        <section class="control-panel">
+          <h2>Estados e ações</h2>
+          <div class="divider"></div>
+          <div class="actions">
+            <button class="primary">Ação principal</button><button>Secundária</button
+            ><button class="ghost">Auxiliar</button><button disabled>Desabilitado</button>
+          </div>
+          <div class="field" style="margin-top: 28px">
+            <span class="field-head"><label for="demoInvalid">DPI</label></span
+            ><input
+              id="demoInvalid"
+              type="number"
+              value="0"
+              aria-invalid="true"
+              aria-describedby="demoError"
+            />
+            <p id="demoError" class="hint error">Informe DPI maior que zero.</p>
+          </div>
+          <div class="notice">Referência visual. Confirme o resultado dentro do jogo.</div>
+          <pre class="codebox">cl_crosshairsize 8; cl_crosshairgap 4;</pre>
+          <div class="states">
+            <button class="active" aria-pressed="true">Parado</button
+            ><button aria-pressed="false">Movimento</button
+            ><button aria-pressed="false">Disparo</button>
+          </div>
+        </section>
+      </div>
+      <section style="margin-top: 36px">
+        <h2>Tokens</h2>
+        <div class="presets" style="gap: 16px">
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #0b0c10;
+              "
+            ></div>
+            <p class="hint">Fundo<br /><code>#0b0c10</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #111218;
+              "
+            ></div>
+            <p class="hint">Superfície<br /><code>#111218</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #272831;
+              "
+            ></div>
+            <p class="hint">Linha<br /><code>#272831</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #f1f1f5;
+              "
+            ></div>
+            <p class="hint">Texto<br /><code>#f1f1f5</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #9b9ba9;
+              "
+            ></div>
+            <p class="hint">Secundário<br /><code>#9b9ba9</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #a393ff;
+              "
+            ></div>
+            <p class="hint">Acento<br /><code>#a393ff</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #242033;
+              "
+            ></div>
+            <p class="hint">Seleção<br /><code>#242033</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #8bd6b0;
+              "
+            ></div>
+            <p class="hint">Sucesso<br /><code>#8bd6b0</code></p>
+          </div>
+          <div style="min-width: 100px">
+            <div
+              style="
+                height: 50px;
+                border-radius: 6px;
+                border: 1px solid var(--line);
+                background: #ff9caa;
+              "
+            ></div>
+            <p class="hint">Erro<br /><code>#ff9caa</code></p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script>
+      document
+        .getElementById('demoRange')
+        .addEventListener(
+          'input',
+          (e) => (document.getElementById('demoOutput').textContent = e.target.value),
+        );
+    </script>
+  </body>
+</html>
