@@ -1,1 +1,0 @@
-Original snapshot of https://github.com/GojoDark/V-IDCORE at commit b67bed4a4c00a4bd57fe2e91997ac7742bed8775. All eight original files verified against Git blob hashes. Retrieved 2026-10-05. This snapshot is retained for recovery and research traceability; run the V4 from the parent directory.

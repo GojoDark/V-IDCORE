@@ -1,258 +1,1545 @@
-const $=id=>document.getElementById(id);
-const GAME={cs2:{name:'CS2',yaw:.022,dec:4},valorant:{name:'VALORANT',yaw:.07,dec:4},r6:{name:'R6 Siege',yaw:.02,dec:2}};
-const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
-const cm360=(dpi,sens,yaw)=>dpi>0&&sens>0?914.4/(dpi*sens*yaw):0;
-const sensForCm=(cm,dpi,yaw)=>cm>0&&dpi>0?914.4/(cm*dpi*yaw):0;
-const fmt=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'—';
-async function copyText(t,b){try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(t);else{const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');ta.remove()}if(b){const old=b.textContent;b.textContent='Copiado ✓';setTimeout(()=>b.textContent=old,1100)}}catch(e){if(b)b.textContent='Falhou ao copiar'}}
-function cross(el,size,gap,thick,color,dot=false,outline=false){if(!el)return;el.innerHTML='';const add=(l,t,w,h)=>{let i=document.createElement('i');i.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:${color};${outline?'box-shadow:0 0 0 1px #000':''}`;el.appendChild(i)};add(40+gap,40-thick/2,size,thick);add(40-gap-size,40-thick/2,size,thick);add(40-thick/2,40-gap-size,thick,size);add(40-thick/2,40+gap,thick,size);if(dot)add(40-thick/2,40-thick/2,thick,thick)}
-let csPreviewState='idle',csAutoTimer=null,vPreviewState='idle',vAutoTimer=null;
-function csPixelCross(el,size,gap,thick,color,dot,outlineMode,style,spread){
- if(!el)return;el.innerHTML='';
- const cx=150,cy=150,isDyn=style==='dynamic'||style==='dynamicQuad';
- let state=csPreviewState==='auto'?'idle':csPreviewState; let extra=isDyn?(state==='move'?Math.min(spread*.18,28):state==='fire'?Math.min(spread*.32,52):0):0;
- let g=gap+extra;
- const add=(l,t,w,h,cls='')=>{let i=document.createElement('i');i.className=cls;i.style.left=l+'px';i.style.top=t+'px';i.style.width=w+'px';i.style.height=h+'px';i.style.background=color;if(outlineMode==='full')i.style.boxShadow='0 0 0 1px #000';if(outlineMode==='half')i.classList.add('outline-half');el.appendChild(i)};
- if(style==='square'){
-   let side=Math.max(thick,size);add(cx-side/2,cy-side/2,side,side,'square-core');
- }else{
-   add(cx+g,cy-thick/2,size,thick);add(cx-g-size,cy-thick/2,size,thick);add(cx-thick/2,cy-g-size,thick,size);add(cx-thick/2,cy+g,thick,size);
- }
- if(dot)add(cx-thick/2,cy-thick/2,thick,thick);
+'use strict';
+const pageName = location.pathname.split('/').pop().replace('.html', '') || 'index';
+const page = ['cs2', 'valorant', 'r6', 'sensi', 'lab'].includes(pageName)
+  ? pageName === 'lab'
+    ? 'sensi'
+    : pageName
+  : 'home';
+const query = new URLSearchParams(location.search);
+const allowedModules = page === 'cs2' ? ['crosshair','sensitivity','viewmodel','configs'] : page === 'valorant' ? ['crosshair','sensitivity','configs'] : ['sensitivity'];
+const moduleName = allowedModules.includes(query.get('module')) ? query.get('module') : allowedModules[0];
+const esc = (s) =>
+  String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+let toastTimer;
+function notify(message) {
+  $('toast').textContent = message;
+  $('toast').classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3200);
 }
-function csUpdate(){
- if(!$('csDpi'))return;let dpi=+$('csDpi').value||0,s=+$('csSens').value||0,cm=cm360(dpi,s,GAME.cs2.yaw),edpi=dpi*s;
- $('csEdpi').textContent=fmt(edpi,0);$('csCm').textContent=fmt(cm)+' cm/360°';
- if($('csGoal')){
-   let goal=$('csGoal').value,style=$('csAimStyle').value,pad=$('csPad').value;
-   let base={balanced:[27,45],recoil:[32,52],flick:[22,38],tracking:[27,46]}[goal];
-   let loCm=base[0],hiCm=base[1];
-   if(style==='arm'){loCm+=3;hiCm+=5} if(style==='wrist'){loCm=Math.max(16,loCm-5);hiCm-=5}
-   if(pad==='small'){loCm=Math.max(16,loCm-6);hiCm=Math.min(hiCm,36)} if(pad==='large'&&style!=='wrist'){hiCm+=3}
-   let fast=sensForCm(loCm,dpi,GAME.cs2.yaw),slow=sensForCm(hiCm,dpi,GAME.cs2.yaw);
-   let profile=cm<20?'Muito alta':cm<28?'Alta':cm<=45?'Equilibrada':cm<=60?'Baixa':'Muito baixa';
-   $('csSensProfile').textContent=profile;
-   $('csTestRange').textContent=`${fmt(slow,3)} – ${fmt(fast,3)} sens  •  ${loCm}–${hiCm} cm/360°`;
-   let goalText={balanced:'equilíbrio entre microajuste, tracking e giros',recoil:'mais margem física para microcorreções e controle de spray',flick:'deslocamentos mais curtos para flicks e trocas rápidas de alvo',tracking:'correções contínuas suaves sem exigir deslocamento extremo'}[goal];
-   let relation=cm<loCm?'Sua sens atual está mais rápida que a faixa de teste sugerida.':cm>hiCm?'Sua sens atual está mais lenta que a faixa de teste sugerida.':'Sua sens atual já cai dentro da faixa de teste sugerida.';
-   $('csAdvice').innerHTML=`<b>${relation}</b> Para ${goalText}, teste mudanças pequenas e compare consistência — não troque a sens inteira de uma vez.`;
-   let trade=style==='wrist'?'Como você priorizou pulso, a faixa evita sensibilidades muito lentas que exigiriam deslocamento grande.':style==='arm'?'Como você priorizou braço, a faixa aceita mais cm/360 para ganhar controle fino.':'Braço + pulso permite uma faixa intermediária com boa margem para correções e giros.';
-   if(pad==='small')trade+=' O mousepad pequeno limita o teto de cm/360 para não faltar espaço físico.'; else if(pad==='large')trade+=' O mousepad grande permite testar sensibilidades mais lentas sem limitar tanto o movimento.';
-   $('csTradeoff').textContent=trade;
- }
- if(!$('csSize'))return;
- let z=+$('csSize').value,g=+$('csGap').value,t=+$('csThick').value,c=$('csColor').value,d=$('csDot').checked,om=$('csOutlineMode').value,style=$('csStyle').value,spread=+$('csSpread').value,res=$('csResolution').value;
- $('csSizeV').textContent=z+' px';$('csGapV').textContent=g+' px';$('csThickV').textContent=t+' px';$('csSpreadV').textContent=spread+' px';$('csSpreadRow').classList.toggle('hidden',!(style==='dynamic'||style==='dynamicQuad'));$('csResLabel').textContent=res;$('csScaleBase').textContent=res;
- let stateName=csPreviewState==='idle'?'PARADO':csPreviewState==='move'?'CORRENDO':csPreviewState==='fire'?'ATIRANDO':'AUTO';$('csStateLabel').textContent=stateName; $('csCross')?.closest('.preview')?.classList.toggle('is-moving',csPreviewState==='move'); $('csCross')?.closest('.preview')?.classList.toggle('is-firing',csPreviewState==='fire');
- csPixelCross($('csCross'),z,g,t,c,d,om,style,spread);
- const rgb=c.match(/[a-f\d]{2}/gi).map(x=>parseInt(x,16));
- let legacyStyle=style==='static'||style==='square'?4:2;
- let cmds=[`cl_crosshairstyle ${legacyStyle}`,`cl_crosshairsize ${z}`,`cl_crosshairgap ${g}`,`cl_crosshairthickness ${t}`,`cl_crosshairdot ${d?1:0}`,`cl_crosshair_drawoutline ${om==='none'?0:1}`,`cl_crosshaircolor 5`,`cl_crosshaircolor_r ${rgb[0]}`,`cl_crosshaircolor_g ${rgb[1]}`,`cl_crosshaircolor_b ${rgb[2]}`];
- $('csCode').textContent=cmds.join('; ')+';';
+function storageRead(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) ?? fallback) : fallback;
+  } catch {
+    notify('Não foi possível ler os dados locais.');
+    return fallback;
+  }
 }
-function valCross(el,opt){
- if(!el)return;el.innerHTML='';const cx=160,cy=160,state=vPreviewState==='auto'?'idle':vPreviewState;
- const motion=opt.moveError&&state==='move'?8:0, firing=opt.fireError&&state==='fire'?13:0,extra=motion+firing;
- const add=(l,t,w,h,opacity=1)=>{let i=document.createElement('i');i.style.left=l+'px';i.style.top=t+'px';i.style.width=w+'px';i.style.height=h+'px';i.style.background=opt.color;i.style.opacity=opacity*opt.opacity;if(opt.outline)i.style.boxShadow='0 0 0 1px #000';el.appendChild(i)};
- if(opt.inner){let g=opt.innerGap+extra,t=opt.innerThick;add(cx+g,cy-t/2,opt.innerH,t);add(cx-g-opt.innerH,cy-t/2,opt.innerH,t);add(cx-t/2,cy-g-opt.innerV,t,opt.innerV);add(cx-t/2,cy+g,t,opt.innerV)}
- if(opt.outer){let g=opt.outerGap+extra*1.35,t=opt.outerThick;add(cx+g,cy-t/2,opt.outerH,t,.9);add(cx-g-opt.outerH,cy-t/2,opt.outerH,t,.9);add(cx-t/2,cy-g-opt.outerV,t,opt.outerV,.9);add(cx-t/2,cy+g,t,opt.outerV,.9)}
- if(opt.dot){let d=opt.dotSize;add(cx-d/2,cy-d/2,d,d)}
+function storageWrite(key, value) {
+  try {
+    const previous = localStorage.getItem(key);
+    if (previous !== null) localStorage.setItem(key + '_backup', previous);
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    notify('O navegador não permitiu salvar. Exporte uma cópia.');
+    return false;
+  }
 }
-function valUpdate(){if(!$('vDpi'))return;let dpi=+$('vDpi').value||0,s=+$('vSens').value||0,cm=cm360(dpi,s,GAME.valorant.yaw);$('vEdpi').textContent=fmt(dpi*s,0)+' eDPI';$('vCm').textContent=fmt(cm)+' cm/360°';if(!$('vInnerH'))return;
- let o={color:$('vColor').value,opacity:+$('vOpacity').value,dot:$('vDot').checked,dotSize:+$('vDotSize').value,outline:$('vOutline').checked,inner:$('vInner').checked,innerH:+$('vInnerH').value,innerV:+$('vInnerV').value,innerThick:+$('vInnerThick').value,innerGap:+$('vInnerGap').value,outer:$('vOuter').checked,outerH:+$('vOuterH').value,outerV:+$('vOuterV').value,outerThick:+$('vOuterThick').value,outerGap:+$('vOuterGap').value,moveError:$('vMoveError').checked,fireError:$('vFireError').checked};
- $('vOpacityV').textContent=Math.round(o.opacity*100)+'%';['InnerH','InnerV','InnerThick','InnerGap','OuterH','OuterV','OuterThick','OuterGap','DotSize'].forEach(k=>{let e=$('v'+k+'V'),inp=$('v'+k);if(e&&inp)e.textContent=inp.value});
- $('vDotSizeRow').classList.toggle('hidden',!o.dot); let stateName=vPreviewState==='idle'?'PARADO':vPreviewState==='move'?'CORRENDO':vPreviewState==='fire'?'ATIRANDO':'AUTO';$('vStateLabel').textContent=stateName;let pv=$('vCross').closest('.preview');pv.classList.toggle('is-moving',vPreviewState==='move');pv.classList.toggle('is-firing',vPreviewState==='fire');valCross($('vCross'),o);
- $('vProfileSummary').textContent=`Cor ${o.color.toUpperCase()} | Opacidade ${Math.round(o.opacity*100)}% | Dot ${o.dot?'ON '+o.dotSize:'OFF'} | Outline ${o.outline?'ON':'OFF'} | Inner ${o.inner?`H${o.innerH}/V${o.innerV} T${o.innerThick} O${o.innerGap}`:'OFF'} | Outer ${o.outer?`H${o.outerH}/V${o.outerV} T${o.outerThick} O${o.outerGap}`:'OFF'} | Movimento ${o.moveError?'ON':'OFF'} | Disparo ${o.fireError?'ON':'OFF'}`;
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.append(el);
+      el.select();
+      const ok = document.execCommand('copy');
+      el.remove();
+      if (!ok) throw Error();
+    }
+    notify('Copiado para a área de transferência.');
+  } catch {
+    notify('Não foi possível copiar. Selecione o texto e copie manualmente.');
+  }
 }
-function r6Update(){if(!$('rDpi'))return;let dpi=+$('rDpi').value||0,s=+$('rSens').value||0,m=+$('rMult').value||.02;let cm=cm360(dpi,s,m);$('rEdpi').textContent=fmt(dpi*s,0)+' game-eDPI';$('rCm').textContent=fmt(cm)+' cm/360°';}
-function converter(){if(!$('fromGame'))return;let a=GAME[$('fromGame').value],b=GAME[$('toGame').value],dpi=+$('convDpi').value||0,s=+$('convSens').value||0;if(dpi<=0||s<=0){$('convResult').textContent='—';$('convMeta').textContent='Informe DPI e sensibilidade maiores que zero.';return}let cm=cm360(dpi,s,a.yaw),out=sensForCm(cm,dpi,b.yaw);$('convResult').textContent=fmt(out,b.dec);$('convMeta').textContent=`${a.name} ${fmt(s,a.dec)} → ${b.name} ${fmt(out,b.dec)} • ${fmt(cm)} cm/360° preservados`;}
-function advisor(){if(!$('advDpi'))return;let game=GAME[$('advGame').value],dpi=+$('advDpi').value||0,s=+$('advSens').value||0,goal=$('advGoal').value,cm=cm360(dpi,s,game.yaw);let target=goal==='recoil'?[30,50]:goal==='flick'?[20,38]:goal==='tracking'?[25,45]:[25,45];let lo=sensForCm(target[1],dpi,game.yaw),hi=sensForCm(target[0],dpi,game.yaw);let label=cm<20?'muito alta':cm<28?'alta':cm<=50?'moderada/baixa':'muito baixa';$('advCurrent').textContent=`${fmt(cm)} cm/360° • sens ${label}`;$('advRange').textContent=`Teste inicial: ${fmt(lo,game.dec)} – ${fmt(hi,game.dec)}`;let why=goal==='recoil'?'Uma faixa mais lenta tende a dar mais margem física para microcorreções durante sprays; exige mais mousepad e braço.':goal==='flick'?'Uma faixa intermediária/rápida reduz o deslocamento para flicks, mas aumenta a precisão física exigida.':goal==='tracking'?'Uma faixa intermediária costuma equilibrar correções contínuas com alcance de movimento.':'A faixa equilibrada evita extremos e serve como ponto de partida, não como “sens mágica”.';$('advWhy').textContent=why;}
-function bind(ids,fn){ids.forEach(id=>$(id)?.addEventListener('input',fn));ids.forEach(id=>$(id)?.addEventListener('change',fn));fn()}
-document.addEventListener('DOMContentLoaded',()=>{bind(['csDpi','csSens','csGoal','csAimStyle','csPad','csSize','csGap','csThick','csColor','csDot','csOutlineMode','csStyle','csSpread','csResolution'],csUpdate);document.querySelectorAll('[data-cs-state]').forEach(b=>b.addEventListener('click',()=>{clearInterval(csAutoTimer);csPreviewState=b.dataset.csState;document.querySelectorAll('[data-cs-state]').forEach(x=>x.classList.toggle('active',x===b));if(csPreviewState==='auto'){let seq=['idle','move','fire'],i=0;csPreviewState=seq[0];csUpdate();csAutoTimer=setInterval(()=>{i=(i+1)%seq.length;csPreviewState=seq[i];csUpdate()},900)}else csUpdate()}));bind(['vDpi','vSens','vColor','vOpacity','vDot','vDotSize','vOutline','vInner','vInnerH','vInnerV','vInnerThick','vInnerGap','vMoveError','vFireError','vOuter','vOuterH','vOuterV','vOuterThick','vOuterGap'],valUpdate);document.querySelectorAll('[data-v-state]').forEach(b=>b.addEventListener('click',()=>{clearInterval(vAutoTimer);vPreviewState=b.dataset.vState;document.querySelectorAll('[data-v-state]').forEach(x=>x.classList.toggle('active',x===b));if(vPreviewState==='auto'){let seq=['idle','move','fire'],i=0;vPreviewState=seq[0];valUpdate();vAutoTimer=setInterval(()=>{i=(i+1)%seq.length;vPreviewState=seq[i];valUpdate()},900)}else valUpdate()}));bind(['rDpi','rSens','rMult'],r6Update);bind(['fromGame','toGame','convDpi','convSens'],converter);bind(['advGame','advDpi','advSens','advGoal'],advisor);});
-
-// VØIDCORE animated navigation indicator
-function initCoreNav(){
- const nav=document.querySelector('.core-nav'); if(!nav)return;
- const indicator=nav.querySelector('.nav-indicator'); const links=[...nav.querySelectorAll('a[data-core]')];
- const active=nav.dataset.active; const activeLink=links.find(a=>a.dataset.core===active);
- const moveTo=(a)=>{if(!a||!indicator)return;const nr=nav.getBoundingClientRect(),r=a.getBoundingClientRect();indicator.style.left=(r.left-nr.left)+'px';indicator.style.width=r.width+'px';indicator.style.opacity='1'};
- if(activeLink){activeLink.classList.add('nav-active');requestAnimationFrame(()=>moveTo(activeLink));}
- links.forEach(a=>{a.addEventListener('mouseenter',()=>moveTo(a));a.addEventListener('mouseleave',()=>moveTo(activeLink));a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();moveTo(a);a.classList.add('nav-active');setTimeout(()=>location.href=a.href,230);});});
- addEventListener('resize',()=>moveTo(activeLink));
+function download(name, text, type = 'text/plain') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
-document.addEventListener('DOMContentLoaded',initCoreNav);
-
-// CS2 Toolkit — autoexec, viewmodel, binds and performance
-
-const vmHelp={fov:{name:'FOV',text:'Controla quanto do viewmodel aparece. Maior FOV tende a deixar a arma visualmente menor/mais afastada e libera mais área da tela.',dir:'54 ← MENOR  •  MAIOR → 68'},x:{name:'OFFSET X',text:'Move o viewmodel horizontalmente. Valores negativos puxam para a esquerda; positivos empurram para a direita.',dir:'−2.5 ← ESQUERDA  •  DIREITA → +2.5'},y:{name:'OFFSET Y',text:'Move a arma no eixo de profundidade. Use o preview para entender a tendência de aproximar ou afastar o viewmodel.',dir:'−2 ← TRÁS  •  FRENTE → +2'},z:{name:'OFFSET Z',text:'Move o viewmodel verticalmente. Valores negativos descem a arma; positivos sobem.',dir:'−2 ↓ BAIXO  •  CIMA ↑ +2'}};
-function vmShowHelp(k){let d=vmHelp[k];if(!d||!$('vmHelpName'))return;$('vmHelpName').textContent=d.name;$('vmHelpText').textContent=d.text;$('vmHelpDir').textContent=d.dir;let id={fov:'vmFov',x:'vmX',y:'vmY',z:'vmZ'}[k];$('vmHelpValue').textContent=$(id).value;document.querySelectorAll('.vm-info').forEach(b=>b.classList.toggle('active',b.dataset.vmInfo===k))}
-document.addEventListener('click',e=>{let b=e.target.closest&&e.target.closest('.vm-info');if(b)vmShowHelp(b.dataset.vmInfo)});
-function vmUpdate(){if(!$('vmFov'))return;let f=+$('vmFov').value,x=+$('vmX').value,y=+$('vmY').value,z=+$('vmZ').value;$('vmFovV').textContent=f;$('vmXV').textContent=x.toFixed(1);$('vmYV').textContent=y.toFixed(1);$('vmZV').textContent=z.toFixed(1);$('vmCode').textContent=`viewmodel_presetpos 0; viewmodel_fov ${f}; viewmodel_offset_x ${x.toFixed(1)}; viewmodel_offset_y ${y.toFixed(1)}; viewmodel_offset_z ${z.toFixed(1)};`;let g=$('vmGun');if(g){let depthScale=1+(y*.035);g.style.transform=`translate(${x*9}px,${-z*8}px) scale(${(.82+(f-54)/70)*depthScale})`;g.style.filter=`brightness(${1+y*.035})`}let active=document.querySelector('.vm-info.active');if(active)vmShowHelp(active.dataset.vmInfo);autoexecUpdate()}
-function bindUpdate(){if(!$('bindKey'))return;let k=$('bindKey').value.trim().replace(/[";]/g,'')||'j',a=$('bindAction').value;$('bindCode').textContent=`bind "${k}" "${a}";`}
-function autoexecUpdate(){if(!$('aeCode'))return;let fps=Math.max(0,+$('aeFps').value||0),ui=Math.max(0,+$('aeFpsUi').value||0),key=$('aeConsole').value;let lines=['// VØIDCORE — CS2 autoexec',`fps_max ${fps}`,`fps_max_ui ${ui}`,`bind "${key}" "toggleconsole"`];if($('aeSens').checked&&$('csSens'))lines.push(`sensitivity ${+$('csSens').value||.8}`);if($('aeVm').checked&&$('vmCode'))lines.push($('vmCode').textContent.replace(/; /g,';\n'));lines.push('echo "VØIDCORE autoexec loaded"');$('aeCode').textContent=lines.join('\n')}
-function perfUpdate(){if(!$('perfGpu'))return;let gpu=$('perfGpu').value,cpu=$('perfCpu').value,hz=+$('perfHz').value,goal=$('perfGoal').value;let preset=goal==='fps'?'Competitive':goal==='quality'?'Quality':'Balanced';let cap=(cpu==='old'?Math.max(180,Math.round(hz*1.35/10)*10):Math.round(hz*1.7/10)*10);if(goal==='quality')cap=Math.max(hz,Math.round(hz*1.15/10)*10);if(gpu==='low')cap=Math.min(cap,240);$('perfPreset').textContent=preset;$('perfCap').textContent=cap+' FPS';$('perfFocus').textContent=goal==='fps'?'latência + clareza':goal==='quality'?'imagem + estabilidade':'frametime + leitura';let txt=goal==='fps'?'Comece com sombras úteis para leitura, reduza efeitos/oclusão que custem FPS e priorize um frametime estável.':'Evite perseguir o maior FPS possível: ajuste qualidade até manter folga acima da taxa do monitor sem picos fortes de frametime.';if(cpu==='old')txt+=' Em CPU 6c/6t mais antiga, o limite costuma aparecer em cenas pesadas; fechar processos em segundo plano pode valer mais que reduzir resolução.';if(gpu==='low')txt+=' Como a GPU é de entrada, reduza primeiro MSAA/sombras e resolução se o uso da GPU ficar próximo de 100%.';$('perfAdvice').textContent=txt}
-document.addEventListener('DOMContentLoaded',()=>{bind(['vmFov','vmX','vmY','vmZ'],vmUpdate);bind(['bindKey','bindAction'],bindUpdate);bind(['aeFps','aeFpsUi','aeConsole','aeSens','aeVm'],autoexecUpdate);bind(['perfGpu','perfCpu','perfHz','perfGoal'],perfUpdate);vmUpdate();vmShowHelp('fov');bindUpdate();autoexecUpdate();perfUpdate();});
-
-
-// VØID LAB — Sens Finder + shareable presets
-const finderState={lo:null,hi:null,mid:null,started:false};
-function finderGame(){return GAME[$('sfGame')?.value||'cs2']}
-function finderReset(){if(!$('sfGame'))return;let g=finderGame(),dpi=+$('sfDpi').value||800,base=+$('sfStart').value||1;if(dpi<=0||base<=0)return;finderState.lo=base*.55;finderState.hi=base*1.45;finderState.mid=base;finderState.started=true;finderRender('Comece testando o valor central e diga como ele parece.')}
-function finderChoice(kind){if(!finderState.started)return finderReset();let m=finderState.mid;if(kind==='slow')finderState.lo=m;else if(kind==='fast')finderState.hi=m;else{finderState.lo=m*.94;finderState.hi=m*1.06}finderState.mid=(finderState.lo+finderState.hi)/2;finderRender(kind==='good'?'Faixa refinada ao redor da sens que pareceu boa.':'Faixa refinada. Teste o novo valor central.')}
-function finderRender(msg=''){if(!$('sfResult'))return;let g=finderGame(),dpi=+$('sfDpi').value||0,m=finderState.mid||0,cm=cm360(dpi,m,g.yaw);$('sfResult').textContent=m?`${fmt(m,g.dec)} sens`:'—';$('sfRange').textContent=m?`Faixa atual: ${fmt(finderState.lo,g.dec)} – ${fmt(finderState.hi,g.dec)} • ${fmt(cm)} cm/360° no ponto central`:'Inicie o teste.';$('sfHint').textContent=msg}
-function buildSharePayload(){let ids=['fromGame','toGame','convDpi','convSens','advGame','advDpi','advSens','advGoal'];let data={};ids.forEach(id=>{let e=$(id);if(e)data[id]=e.value});return data}
-function sharePreset(){let data=buildSharePayload(),raw=btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/=+$/,'');let url=location.href.split('#')[0]+'#preset='+raw;copyText(url,$('shareBtn'));$('shareStatus').textContent='Link copiado. Quem abrir o link recebe os mesmos valores do LAB.'}
-function loadSharePreset(){let m=location.hash.match(/(?:^#|&)preset=([^&]+)/);if(!m)return;try{let raw=m[1].replace(/-/g,'+').replace(/_/g,'/');while(raw.length%4)raw+='=';let data=JSON.parse(decodeURIComponent(escape(atob(raw))));Object.entries(data).forEach(([id,v])=>{let e=$(id);if(e)e.value=v});converter();advisor();if($('shareStatus'))$('shareStatus').textContent='Preset carregado do link compartilhado.'}catch(e){if($('shareStatus'))$('shareStatus').textContent='Não foi possível ler este preset.'}}
-document.addEventListener('DOMContentLoaded',()=>{if($('sfGame')){['sfGame','sfDpi','sfStart'].forEach(id=>$(id)?.addEventListener('change',finderReset));finderReset()}$('sfSlow')?.addEventListener('click',()=>finderChoice('slow'));$('sfGood')?.addEventListener('click',()=>finderChoice('good'));$('sfFast')?.addEventListener('click',()=>finderChoice('fast'));$('sfReset')?.addEventListener('click',finderReset);$('shareBtn')?.addEventListener('click',sharePreset);loadSharePreset()});
-
-/* ===== CS2 CORE V3 ===== */
-function hexRgba(hex,alpha=1){const m=(hex||'#ffffff').replace('#','').match(/.{2}/g)||['ff','ff','ff'];return `rgba(${parseInt(m[0],16)},${parseInt(m[1],16)},${parseInt(m[2],16)},${alpha})`}
-function csIsDynamic(style){return ['dynamic','circleDynamic','classicDynamic','responsiveDynamic','dynamicQuad'].includes(style)}
-function csPixelCross(el,size,gap,thick,color,dot,outlineMode,style,spread){
- if(!el)return;el.innerHTML='';
- const cx=150,cy=150,state=csPreviewState==='auto'?'idle':csPreviewState,alpha=(+$('csAlpha')?.value||100)/100,quad=+$('csQuadrant')?.value||8,outlineColor=$('csOutlineColor')?.value||'#000000',outlineAlpha=(+$('csOutlineAlpha')?.value||100)/100;
- let extra=csIsDynamic(style)?(state==='move'?Math.min(spread*.12,30):state==='fire'?Math.min(spread*.20,48):0):0;if(style==='responsiveDynamic'&&state==='fire')extra=Math.min(spread*.28,60);let g=gap+extra;
- const lineColor=hexRgba(color,alpha),out=hexRgba(outlineColor,outlineAlpha);
- const add=(l,t,w,h,cls='')=>{let i=document.createElement('i');i.className=cls;i.style.left=l+'px';i.style.top=t+'px';i.style.width=w+'px';i.style.height=h+'px';i.style.background=lineColor;if(outlineMode==='full')i.style.boxShadow=`0 0 0 1px ${out}`;if(outlineMode==='half')i.style.boxShadow=`1px 1px 0 ${out}`;el.appendChild(i);return i};
- const addCross=()=>{add(cx+g,cy-thick/2,size,thick);add(cx-g-size,cy-thick/2,size,thick);add(cx-thick/2,cy-g-size,thick,size);add(cx-thick/2,cy+g,thick,size)};
- if(style==='circleStatic'||style==='circleDynamic'){
-   const d=Math.max(10,(size+g)*2.2+extra);let i=add(cx-d/2,cy-d/2,d,d,'cross-circle');i.style.borderWidth=Math.max(1,thick)+'px';i.style.borderColor=lineColor;i.style.background='transparent';if(outlineMode!=='none')i.style.boxShadow=`0 0 0 1px ${out}, inset 0 0 0 1px ${out}`;
- }else if(style==='square'){
-   const d=Math.max(8,size*2);let i=add(cx-d/2,cy-d/2,d,d,'cross-square');i.style.borderWidth=Math.max(1,thick)+'px';i.style.borderColor=lineColor;i.style.background='transparent';
- }else if(style==='dotOnly'){
-   const d=Math.max(2,thick+2);add(cx-d/2,cy-d/2,d,d,'cross-dot-only');
- }else if(style==='staticQuad'||style==='dynamicQuad'){
-   const q=Math.max(2,quad),dist=g+q;add(cx-dist-q,cy-dist-q,q,thick,'cross-quadrant');add(cx+dist,cy-dist-q,q,thick,'cross-quadrant');add(cx-dist-q,cy+dist,q,thick,'cross-quadrant');add(cx+dist,cy+dist,q,thick,'cross-quadrant');
-   add(cx-dist-q,cy-dist-q,thick,q,'cross-quadrant');add(cx+dist+q-thick,cy-dist-q,thick,q,'cross-quadrant');add(cx-dist-q,cy+dist,thick,q,'cross-quadrant');add(cx+dist+q-thick,cy+dist,thick,q,'cross-quadrant');
- }else addCross();
- if(dot&&style!=='dotOnly'){const d=Math.max(2,thick+1);add(cx-d/2,cy-d/2,d,d,'cross-dot')}
+const gameOptions = [
+  ['cs2', 'Counter-Strike 2'],
+  ['valorant', 'VALORANT'],
+  ['r6', 'Rainbow Six Siege · hipfire'],
+];
+function field(id, label, type = 'number', value = '', opts = {}) {
+  const help = opts.help
+    ? `<button type="button" class="help" aria-label="${esc(label)}: ${esc(opts.help)}" data-help="${esc(opts.help)}">ⓘ</button>`
+    : '';
+  const head = `<span class="field-head"><label for="${id}">${esc(label)}</label>${type === 'range' ? `<output for="${id}" id="${id}V">${value}</output>` : help}</span>`;
+  let input;
+  if (type === 'select') {
+    input = `<select id="${id}">${opts.options.map(([v, t]) => `<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  } else {
+    input = `<input id="${id}" type="${type}" ${type === 'checkbox' ? (value ? 'checked' : '') : `value="${esc(value)}"`} ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''} ${opts.step !== undefined ? `step="${opts.step}"` : ''} ${type === 'number' ? 'inputmode="decimal"' : ''}>`;
+  }
+  return `<div class="field ${type === 'checkbox' ? 'check' : ''}" id="${id}Row">${head}${input}</div>`;
 }
-function csUpdate(){
- if(!$('csDpi'))return;
- let dpi=+$('csDpi').value||0,s=+$('csSens').value||0,cm=cm360(dpi,s,GAME.cs2.yaw),edpi=dpi*s;$('csEdpi').textContent=fmt(edpi,0);$('csCm').textContent=fmt(cm)+' cm/360°';
- let goal=$('csGoal').value,aimStyle=$('csAimStyle').value,pad=$('csPad').value,base={balanced:[27,45],recoil:[32,52],flick:[22,38],tracking:[27,46]}[goal],loCm=base[0],hiCm=base[1];if(aimStyle==='arm'){loCm+=3;hiCm+=5}if(aimStyle==='wrist'){loCm=Math.max(16,loCm-5);hiCm-=5}if(pad==='small'){loCm=Math.max(16,loCm-6);hiCm=Math.min(hiCm,36)}if(pad==='large'&&aimStyle!=='wrist')hiCm+=3;let fast=sensForCm(loCm,dpi,GAME.cs2.yaw),slow=sensForCm(hiCm,dpi,GAME.cs2.yaw);$('csSensProfile').textContent=cm<20?'Muito alta':cm<28?'Alta':cm<=45?'Equilibrada':cm<=60?'Baixa':'Muito baixa';$('csTestRange').textContent=`${fmt(slow,3)} – ${fmt(fast,3)} sens • ${loCm}–${hiCm} cm/360°`;$('csAdvice').innerHTML=`<b>${cm<loCm?'Mais rápida que a faixa sugerida':cm>hiCm?'Mais lenta que a faixa sugerida':'Dentro da faixa sugerida'}.</b> Ajuste em passos pequenos e teste consistência.`;$('csTradeoff').textContent=aimStyle==='wrist'?'Pulso favorece uma faixa um pouco mais rápida.':aimStyle==='arm'?'Braço permite explorar sensibilidades mais lentas com mais controle físico.':'Braço + pulso equilibra alcance e microajuste.';
- let z=+$('csSize').value,g=+$('csGap').value,t=+$('csThick').value,c=$('csColor').value,d=$('csDot').checked,om=$('csOutlineMode').value,style=$('csStyle').value,spread=+$('csSpread').value,res=$('csResolution').value,alpha=+$('csAlpha').value||100,quad=+$('csQuadrant').value||8,outlineAlpha=+$('csOutlineAlpha').value||100;
- $('csSizeV').textContent=z+' px';$('csGapV').textContent=g+' px';$('csThickV').textContent=t+' px';$('csSpreadV').textContent=spread;$('csAlphaV').textContent=alpha+'%';$('csOutlineAlphaV').textContent=outlineAlpha+'%';$('csQuadrantV').textContent=quad+' px';$('csSpreadRow').classList.toggle('hidden',!csIsDynamic(style));$('csResLabel').textContent=res;$('csScaleBase').textContent=res;
- const stateName=csPreviewState==='idle'?'PARADO':csPreviewState==='move'?'CORRENDO':csPreviewState==='fire'?'ATIRANDO':'AUTO';$('csStateLabel').textContent=stateName;let pv=$('csPreview');pv?.classList.toggle('is-moving',csPreviewState==='move');pv?.classList.toggle('is-firing',csPreviewState==='fire');
- csPixelCross($('csCross'),z,g,t,c,d,om,style,spread);
- const rgb=c.match(/[a-f\d]{2}/gi).map(x=>parseInt(x,16));let legacyStyle=csIsDynamic(style)?2:4;let cmds=[`cl_crosshairstyle ${legacyStyle}`,`cl_crosshairsize ${z}`,`cl_crosshairgap ${g}`,`cl_crosshairthickness ${t}`,`cl_crosshairdot ${d||style==='dotOnly'?1:0}`,`cl_crosshair_drawoutline ${om==='none'?0:1}`,`cl_crosshairalpha ${Math.round(alpha*2.55)}`,`cl_crosshaircolor 5`,`cl_crosshaircolor_r ${rgb[0]}`,`cl_crosshaircolor_g ${rgb[1]}`,`cl_crosshaircolor_b ${rgb[2]}`];
- if(['circleStatic','circleDynamic','staticQuad','dynamicQuad','square'].includes(style))cmds.unshift('// Estilo visual VØIDCORE: opção nova sem cvar pública equivalente confirmada');$('csCode').textContent=cmds.join('; ')+';';autoexecUpdate();
-}
-function csSceneUpdate(){let scene=$('csScene')?.value||'dust',p=$('csPreview');if(!p)return;['dust','mirage','inferno','dark'].forEach(s=>p.classList.toggle('map-'+s,s===scene))}
-function vmSceneUpdate(){let scene=$('vmScene')?.value||'dust',p=$('vmStage');if(!p)return;['dust','mirage','inferno','dark'].forEach(s=>p.classList.toggle('map-'+s,s===scene))}
-function vmUpdate(){
- if(!$('vmFov'))return;let f=+$('vmFov').value,x=+$('vmX').value,y=+$('vmY').value,z=+$('vmZ').value,aspect=$('vmAspect')?.value||'16-9',hand=$('vmHand')?.value||'right';$('vmFovV').textContent=f;$('vmXV').textContent=x.toFixed(1);$('vmYV').textContent=y.toFixed(1);$('vmZV').textContent=z.toFixed(1);$('vmCode').textContent=`viewmodel_presetpos 0; viewmodel_fov ${f}; viewmodel_offset_x ${x.toFixed(1)}; viewmodel_offset_y ${y.toFixed(1)}; viewmodel_offset_z ${z.toFixed(1)};`;
- let g=$('vmGun'),stage=$('vmStage');if(g){let scale=(1.08-(f-54)*.018)*(1+y*.035),tx=x*18,ty=-z*14+y*3;g.classList.toggle('left',hand==='left');g.style.transform=`translate(${hand==='left'?-tx:tx}px,${ty}px) scale(${scale})`}
- if(stage){stage.classList.toggle('stretched',aspect.includes('stretched'));stage.classList.toggle('black-bars',aspect==='4-3-bars');stage.classList.toggle('aspect-5-4',aspect==='5-4-stretched')}
- let label={'16-9':'16:9','16-10':'16:10','4-3-stretched':'4:3 Stretched','4-3-bars':'4:3 Black Bars','5-4-stretched':'5:4 Stretched'}[aspect];$('vmAspectLabel').textContent=label;$('vmAspectStat').textContent=label;$('vmHandStat').textContent=hand==='left'?'Esquerda':'Direita';$('vmProfile').textContent=`${f} / ${x>=0?'+':''}${x.toFixed(1)} / ${y>=0?'+':''}${y.toFixed(1)} / ${z>=0?'+':''}${z.toFixed(1)}`;autoexecUpdate();
-}
-function parseCrosshairCommands(raw){const pairs={};String(raw).split(/[;\n]+/).forEach(line=>{let m=line.trim().match(/^(cl_crosshair\S+)\s+"?([^"\s]+)"?/i);if(m)pairs[m[1].toLowerCase()]=m[2]});const set=(id,v)=>{let e=$(id);if(e&&v!==undefined)e.value=v};set('csSize',pairs.cl_crosshairsize);set('csGap',pairs.cl_crosshairgap);set('csThick',pairs.cl_crosshairthickness);if(pairs.cl_crosshairdot!==undefined)$('csDot').checked=pairs.cl_crosshairdot==='1';if(pairs.cl_crosshair_drawoutline!==undefined)$('csOutlineMode').value=pairs.cl_crosshair_drawoutline==='0'?'none':'full';if(pairs.cl_crosshairalpha!==undefined)set('csAlpha',Math.round((+pairs.cl_crosshairalpha||255)/2.55));let r=+pairs.cl_crosshaircolor_r,g=+pairs.cl_crosshaircolor_g,b=+pairs.cl_crosshaircolor_b;if([r,g,b].every(Number.isFinite))$('csColor').value='#'+[r,g,b].map(n=>clamp(Math.round(n),0,255).toString(16).padStart(2,'0')).join('');if(pairs.cl_crosshairstyle)$('csStyle').value=+pairs.cl_crosshairstyle===2?'classicDynamic':'static';csUpdate();return Object.keys(pairs).length}
-function crossPreset(name){const presets={precision:{style:'static',size:5,gap:3,thick:1,dot:false,color:'#55ff88'},spray:{style:'classicDynamic',size:7,gap:4,thick:2,dot:false,color:'#00e5ff'},dot:{style:'dotOnly',size:2,gap:0,thick:3,dot:true,color:'#ff3355'},quadrant:{style:'staticQuad',size:8,gap:5,thick:2,dot:false,color:'#b34cff'}};let p=presets[name];if(!p)return;$('csStyle').value=p.style;$('csSize').value=p.size;$('csGap').value=p.gap;$('csThick').value=p.thick;$('csDot').checked=p.dot;$('csColor').value=p.color;csUpdate()}
-function vmPreset(name){const p={classic:[68,2.5,0,-1.5],wide:[68,2.5,2,-2],compact:[60,1.4,-1,-1.8],center:[62,0.2,-.5,-1]}[name];if(!p)return;['vmFov','vmX','vmY','vmZ'].forEach((id,i)=>$(id).value=p[i]);vmUpdate()}
-function saveCrossPreset(){let ids=['csStyle','csSize','csGap','csThick','csQuadrant','csColor','csAlpha','csOutlineMode','csOutlineColor','csOutlineAlpha','csSpread','csResolution','csScene'];let d={dot:$('csDot').checked,scopeColor:$('csScopeColor').checked};ids.forEach(id=>d[id]=$(id).value);localStorage.setItem('voidcore_cs2_crosshair_v3',JSON.stringify(d));$('csImportStatus').textContent='Preset salvo neste navegador.'}
-function loadCrossPreset(){try{let d=JSON.parse(localStorage.getItem('voidcore_cs2_crosshair_v3')||'null');if(!d)throw 0;Object.entries(d).forEach(([id,v])=>{if(id==='dot')$('csDot').checked=v;else if(id==='scopeColor')$('csScopeColor').checked=v;else if($(id))$(id).value=v});csSceneUpdate();csUpdate();$('csImportStatus').textContent='Preset carregado.'}catch(e){$('csImportStatus').textContent='Nenhum preset salvo ainda.'}}
-document.addEventListener('DOMContentLoaded',()=>{
- bind(['csQuadrant','csAlpha','csOutlineColor','csOutlineAlpha','csScopeColor','csScene'],()=>{csSceneUpdate();csUpdate()});
- bind(['vmAspect','vmHand','vmScene'],()=>{vmSceneUpdate();vmUpdate()});
- document.querySelectorAll('[data-cross-preset]').forEach(b=>b.addEventListener('click',()=>crossPreset(b.dataset.crossPreset)));
- document.querySelectorAll('[data-vm-preset]').forEach(b=>b.addEventListener('click',()=>vmPreset(b.dataset.vmPreset)));
- $('csImportBtn')?.addEventListener('click',()=>{let n=parseCrosshairCommands($('csImport').value);$('csImportStatus').textContent=n?`${n} comandos reconhecidos.`:'Nenhum comando cl_crosshair reconhecido.'});
- $('csSavePreset')?.addEventListener('click',saveCrossPreset);$('csLoadPreset')?.addEventListener('click',loadCrossPreset);
- csSceneUpdate();vmSceneUpdate();csUpdate();vmUpdate();
-});
-
-/* ===== VØIDCORE V3.1 — researched CS2 crosshair + Sensi Hub ===== */
-function gameYawFor(game,mult){if(game==='r6')return mult||.02;return GAME[game].yaw}
-function converter(){
- if(!$('fromGame'))return;
- const from=$('fromGame').value,to=$('toGame').value,dpiFrom=+$('convDpi').value||0,dpiTo=+$('convDpiTo')?.value||dpiFrom,s=+$('convSens').value||0,r6m=+$('convR6Mult')?.value||.02;
- const a=GAME[from],b=GAME[to]; const yawA=gameYawFor(from,r6m),yawB=gameYawFor(to,r6m);
- if(dpiFrom<=0||dpiTo<=0||s<=0){$('convResult').textContent='—';$('convMeta').textContent='Informe DPI e sensibilidade válidos.';return}
- const cm=cm360(dpiFrom,s,yawA),out=sensForCm(cm,dpiTo,yawB),inch=cm/2.54;
- $('convResult').textContent=fmt(out,b.dec); $('convCm').textContent=fmt(cm)+' cm'; $('convIn').textContent=fmt(inch)+' in'; $('convEdpiFrom').textContent=fmt(dpiFrom*s,0); $('convEdpiTo').textContent=fmt(dpiTo*out,0);
- $('convMeta').textContent=`${a.name} ${fmt(s,a.dec)} @ ${dpiFrom} DPI → ${b.name} ${fmt(out,b.dec)} @ ${dpiTo} DPI • mesma distância física de 360°`;
- $('convR6MultRow')?.classList.toggle('hidden',from!=='r6'&&to!=='r6');
-}
-function abUpdate(){if(!$('abGameA'))return;let gA=$('abGameA').value,gB=$('abGameB').value,dA=+$('abDpiA').value||0,dB=+$('abDpiB').value||0,sA=+$('abSensA').value||0,sB=+$('abSensB').value||0;let cA=cm360(dA,sA,gameYawFor(gA,.02)),cB=cm360(dB,sB,gameYawFor(gB,.02));$('abCmA').textContent=fmt(cA)+' cm';$('abCmB').textContent=fmt(cB)+' cm';let diff=cA&&cB?((cB-cA)/cA*100):0;$('abDiff').textContent=(diff>=0?'+':'')+fmt(diff,1)+'%';$('abVerdict').textContent=Math.abs(diff)<1?'Praticamente equivalentes em distância 360°.':diff>0?'B é fisicamente mais lenta que A (exige mais movimento de mouse).':'B é fisicamente mais rápida que A (exige menos movimento de mouse).'}
-function saveAB(){if(!$('abSave'))return;let d={at:new Date().toISOString(),a:{game:$('abGameA').value,dpi:$('abDpiA').value,sens:$('abSensA').value},b:{game:$('abGameB').value,dpi:$('abDpiB').value,sens:$('abSensB').value}};let h=JSON.parse(localStorage.getItem('voidcore_sensi_history')||'[]');h.unshift(d);h=h.slice(0,12);localStorage.setItem('voidcore_sensi_history',JSON.stringify(h));$('abStatus').textContent=`Comparação salva localmente (${h.length}/12).`}
-
-function csStyleRows(style){
- const dyn=csIsDynamic(style), circle=style==='circleStatic'||style==='circleDynamic',square=style==='square',dot=style==='dotOnly',quad=style==='staticQuad'||style==='dynamicQuad',classic=style==='classicDynamic';
- const show=(id,on)=>$(id)?.classList.toggle('hidden',!on);
- show('csSizeRow',!(circle||square||dot||style==='staticQuad')); show('csGapRow',!dot); show('csQuadrantRow',quad); show('csSpreadRow',style==='dynamic'||style==='dynamicQuad'||style==='circleDynamic'); show('csSplitRow',classic); show('csInnerAlphaRow',classic); show('csDotRow',!dot); show('csTStyleRow',!circle&&!square&&!dot&&!quad); show('csScopeColorRow',circle||square||dot||quad); show('csScopeScaleRow',circle||square||dot||quad); show('csFollowRecoilRow',dot); return {dyn,circle,square,dot,quad,classic};
-}
-function csPixelCross(el,size,gap,thick,color,dot,outlineMode,style,spread){
- if(!el)return; el.innerHTML=''; const cx=150,cy=150,state=csPreviewState==='auto'?'idle':csPreviewState,alpha=(+$('csAlpha')?.value||100)/100,quad=+$('csQuadrant')?.value||.42,outlineColor=$('csOutlineColor')?.value||'#000000',outlineAlpha=(+$('csOutlineAlpha')?.value||100)/100,split=+$('csSplit')?.value||7,innerAlpha=(+$('csInnerAlpha')?.value||100)/100,tstyle=$('csTStyle')?.checked;
- let extra=csIsDynamic(style)?(state==='move'?Math.min(spread*.12,32):state==='fire'?Math.min(spread*.20,56):0):0;if(style==='responsiveDynamic'&&state==='fire')extra=Math.min(spread*.24,64);let g=gap+extra;
- const lineColor=hexRgba(color,alpha),out=hexRgba(outlineColor,outlineAlpha);
- const add=(l,t,w,h,cls='',op=1)=>{let i=document.createElement('i');i.className=cls;i.style.left=l+'px';i.style.top=t+'px';i.style.width=w+'px';i.style.height=h+'px';i.style.background=lineColor;i.style.opacity=op;if(outlineMode==='full')i.style.boxShadow=`0 0 0 1px ${out}`;if(outlineMode==='half')i.style.boxShadow=`1px 1px 0 ${out}`;el.appendChild(i);return i};
- const addCross=(cg=g,op=1)=>{add(cx+cg,cy-thick/2,size,thick,'',op);add(cx-cg-size,cy-thick/2,size,thick,'',op);if(!tstyle)add(cx-thick/2,cy-cg-size,thick,size,'',op);add(cx-thick/2,cy+cg,thick,size,'',op)};
- if(style==='circleStatic'||style==='circleDynamic'){
-   const r=Math.max(5,Math.abs(g)+thick*2+extra*.25),d=r*2;let i=add(cx-r,cy-r,d,d,'cross-circle');i.style.border=`${Math.max(1,thick)}px solid ${lineColor}`;i.style.borderRadius='50%';i.style.background='transparent';if(outlineMode!=='none')i.style.boxShadow=`0 0 0 1px ${out}, inset 0 0 0 1px ${out}`;
- }else if(style==='square'){
-   const d=Math.max(6,Math.abs(g)*2+thick*2);let i=add(cx-d/2,cy-d/2,d,d,'cross-square');i.style.border=`${Math.max(1,thick)}px solid ${lineColor}`;i.style.background='transparent';
- }else if(style==='dotOnly'){
-   const d=Math.max(2,thick*2+1);add(cx-d/2,cy-d/2,d,d,'cross-dot-only');
- }else if(style==='staticQuad'){
-   const q=Math.max(.08,Math.min(1,+$('csQuadrant').value||.42)),r=Math.max(7,Math.abs(g)+9),arc=Math.max(5,r*q); const mk=(x,y,borders,rad)=>{let i=document.createElement('i');i.className='quad-corner';i.style.left=x+'px';i.style.top=y+'px';i.style.width=arc+'px';i.style.height=arc+'px';i.style.borderColor=lineColor;i.style.borderStyle='solid';i.style.borderWidth=borders;i.style.borderRadius=rad;if(outlineMode!=='none')i.style.filter=`drop-shadow(0 0 1px ${out})`;el.appendChild(i)}; mk(cx-r-arc,cy-r-arc,`${thick}px 0 0 ${thick}px`,'100% 0 0 0');mk(cx+r,cy-r-arc,`${thick}px ${thick}px 0 0`,'0 100% 0 0');mk(cx-r-arc,cy+r,`0 0 ${thick}px ${thick}px`,'0 0 0 100%');mk(cx+r,cy+r,`0 ${thick}px ${thick}px 0`,'0 0 100% 0');
- }else if(style==='dynamicQuad'){
-   const r=Math.max(12,Math.abs(g)+18+extra*.2),arcLen=Math.max(18,Math.min(70,size*5)); const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 300 300');svg.classList.add('quad-svg'); const start=[-135,-45,45,135];start.forEach(a=>{let path=document.createElementNS('http://www.w3.org/2000/svg','path');let a1=(a-arcLen/2)*Math.PI/180,a2=(a+arcLen/2)*Math.PI/180,x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1),x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2),large=arcLen>180?1:0;path.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`);path.setAttribute('stroke',lineColor);path.setAttribute('stroke-width',Math.max(1,thick));path.setAttribute('fill','none');if(outlineMode!=='none')path.style.filter=`drop-shadow(0 0 1px ${out})`;svg.appendChild(path)});el.appendChild(svg);
- }else if(style==='classicDynamic'){
-   addCross(g,1); if(state==='fire'){let ig=Math.max(0,g-split);addCross(ig,innerAlpha)}
- }else addCross();
- if(dot&&style!=='dotOnly'){const d=Math.max(2,thick+1);add(cx-d/2,cy-d/2,d,d,'cross-dot')}
-}
-function csUpdate(){
- if(!$('csDpi'))return; let dpi=+$('csDpi').value||0,s=+$('csSens').value||0,cm=cm360(dpi,s,GAME.cs2.yaw),edpi=dpi*s;$('csEdpi').textContent=fmt(edpi,0);$('csCm').textContent=fmt(cm)+' cm/360°';
- if($('csGoal')){let goal=$('csGoal').value,aimStyle=$('csAimStyle').value,pad=$('csPad').value,base={balanced:[27,45],recoil:[32,52],flick:[22,38],tracking:[27,46]}[goal],loCm=base[0],hiCm=base[1];if(aimStyle==='arm'){loCm+=3;hiCm+=5}if(aimStyle==='wrist'){loCm=Math.max(16,loCm-5);hiCm-=5}if(pad==='small'){loCm=Math.max(16,loCm-6);hiCm=Math.min(hiCm,36)}if(pad==='large'&&aimStyle!=='wrist')hiCm+=3;let fast=sensForCm(loCm,dpi,GAME.cs2.yaw),slow=sensForCm(hiCm,dpi,GAME.cs2.yaw);$('csSensProfile').textContent=cm<20?'Muito alta':cm<28?'Alta':cm<=45?'Equilibrada':cm<=60?'Baixa':'Muito baixa';$('csTestRange').textContent=`${fmt(slow,3)} – ${fmt(fast,3)} sens • ${loCm}–${hiCm} cm/360°`;$('csAdvice').innerHTML=`<b>${cm<loCm?'Mais rápida que a faixa de teste':cm>hiCm?'Mais lenta que a faixa de teste':'Dentro da faixa de teste'}.</b> Use a faixa como experimento, não como “sens perfeita”.`;$('csTradeoff').textContent='Faixas são heurísticas para teste; consistência pessoal e espaço físico do mousepad continuam mandando.'}
- if(!$('csSize'))return; let z=+$('csSize').value,g=+$('csGap').value,t=+$('csThick').value,c=$('csColor').value,d=$('csDot').checked,om=$('csOutlineMode').value,style=$('csStyle').value,spread=+$('csSpread').value,res=$('csResolution').value,alpha=+$('csAlpha').value||100,quad=+$('csQuadrant').value||.42,outlineAlpha=+$('csOutlineAlpha').value||100;csStyleRows(style);
- $('csSizeV').textContent=z+' px';$('csGapV').textContent=g+' px';$('csThickV').textContent=t+' px';$('csSpreadV').textContent=spread+' px';$('csAlphaV').textContent=alpha+'%';$('csOutlineAlphaV').textContent=outlineAlpha+'%';$('csQuadrantV').textContent=Number(quad).toFixed(2);if($('csSplitV'))$('csSplitV').textContent=(+$('csSplit').value||0)+' px';if($('csInnerAlphaV'))$('csInnerAlphaV').textContent=(+$('csInnerAlpha').value||0)+'%';if($('csScopeScaleV'))$('csScopeScaleV').textContent=(+$('csScopeScale').value||.16).toFixed(2);$('csResLabel').textContent=res;$('csScaleBase').textContent=res;
- const stateName=csPreviewState==='idle'?'PARADO':csPreviewState==='move'?'CORRENDO':csPreviewState==='fire'?'ATIRANDO':'AUTO';$('csStateLabel').textContent=stateName;let pv=$('csPreview');pv?.classList.toggle('is-moving',csPreviewState==='move');pv?.classList.toggle('is-firing',csPreviewState==='fire');csPixelCross($('csCross'),z,g,t,c,d,om,style,spread);
- const rgb=c.match(/[a-f\d]{2}/gi).map(x=>parseInt(x,16)),legacyStyle=style==='classicDynamic'?2:style==='responsiveDynamic'?3:4;let cmds=[`cl_crosshairstyle ${legacyStyle}`,`cl_crosshairsize ${z}`,`cl_crosshairgap ${g}`,`cl_crosshairthickness ${t}`,`cl_crosshairdot ${d||style==='dotOnly'?1:0}`,`cl_crosshair_drawoutline ${om==='none'?0:1}`,`cl_crosshairalpha ${Math.round(alpha*2.55)}`,`cl_crosshaircolor 5`,`cl_crosshaircolor_r ${rgb[0]}`,`cl_crosshaircolor_g ${rgb[1]}`,`cl_crosshaircolor_b ${rgb[2]}`];if(['circleStatic','circleDynamic','staticQuad','dynamicQuad','square','dotOnly','dynamic'].includes(style))cmds.unshift('// Parte visual usa o sistema novo do CS2; o VØIDCORE não inventa cvar não validada');$('csCode').textContent=cmds.join('; ')+';';autoexecUpdate();
-}
-document.addEventListener('DOMContentLoaded',()=>{
- bind(['convDpiTo','convR6Mult'],converter);bind(['abGameA','abGameB','abDpiA','abDpiB','abSensA','abSensB'],abUpdate);$('abSave')?.addEventListener('click',saveAB);
- bind(['csSplit','csInnerAlpha','csTStyle','csScopeScale','csFollowRecoil'],csUpdate); if($('csQuadrant')){$('csQuadrant').min='.08';$('csQuadrant').max='1';$('csQuadrant').step='.01';$('csQuadrant').value='.42'} csUpdate();
-});
-
-// ===== VALORANT CORE 3.2 =====
-function vHex8(hex){return String(hex||'#ffffff').replace('#','').toUpperCase()+'FF'}
-function vPct(v){return Math.round((+v||0)*100)+'%'}
-function vGet(){
- return {color:$('vColor')?.value||'#ffffff',opacity:+$('vOpacity')?.value||1,outline:$('vOutline')?.checked||false,outlineOpacity:+$('vOutlineOpacity')?.value||0,outlineThickness:+$('vOutlineThickness')?.value||1,dot:$('vDot')?.checked||false,dotOpacity:+$('vDotOpacity')?.value||1,dotSize:+$('vDotSize')?.value||2,inner:$('vInner')?.checked||false,innerH:+$('vInnerH')?.value||0,innerV:+$('vInnerV')?.value||0,innerThick:+$('vInnerThick')?.value||0,innerGap:+$('vInnerGap')?.value||0,innerOpacity:+$('vInnerOpacity')?.value||0,moveError:$('vMoveError')?.checked||false,moveMult:+$('vMoveMult')?.value||0,fireError:$('vFireError')?.checked||false,fireMult:+$('vFireMult')?.value||0,outer:$('vOuter')?.checked||false,outerH:+$('vOuterH')?.value||0,outerV:+$('vOuterV')?.value||0,outerThick:+$('vOuterThick')?.value||0,outerGap:+$('vOuterGap')?.value||0,outerOpacity:+$('vOuterOpacity')?.value||0,outerMoveError:$('vOuterMoveError')?.checked||false,outerMoveMult:+$('vOuterMoveMult')?.value||0,outerFireError:$('vOuterFireError')?.checked||false,outerFireMult:+$('vOuterFireMult')?.value||0,usePrimaryAds:$('vUsePrimaryAds')?.checked!==false,sniperColor:$('vSniperColor')?.value||'#ff0000',sniperOpacity:+$('vSniperOpacity')?.value||.75,sniperThickness:+$('vSniperThickness')?.value||1}
-}
-function vRender(el,o){
- if(!el)return;el.innerHTML='';const cx=160,cy=160,state=vPreviewState==='auto'?'idle':vPreviewState;const inErr=(o.moveError&&state==='move'?o.moveMult*10:0)+(o.fireError&&state==='fire'?o.fireMult*12:0);const outErr=(o.outerMoveError&&state==='move'?o.outerMoveMult*11:0)+(o.outerFireError&&state==='fire'?o.outerFireMult*13:0);
- const add=(l,t,w,h,op)=>{let i=document.createElement('i');i.style.left=l+'px';i.style.top=t+'px';i.style.width=w+'px';i.style.height=h+'px';i.style.background=o.color;i.style.opacity=(op*o.opacity);if(o.outline&&o.outlineOpacity>0)i.style.boxShadow=`0 0 0 ${o.outlineThickness}px rgba(0,0,0,${o.outlineOpacity})`;el.appendChild(i)};
- if(o.inner){let g=o.innerGap+inErr,t=o.innerThick;add(cx+g,cy-t/2,o.innerH,t,o.innerOpacity);add(cx-g-o.innerH,cy-t/2,o.innerH,t,o.innerOpacity);add(cx-t/2,cy-g-o.innerV,t,o.innerV,o.innerOpacity);add(cx-t/2,cy+g,t,o.innerV,o.innerOpacity)}
- if(o.outer){let g=o.outerGap+outErr,t=o.outerThick;add(cx+g,cy-t/2,o.outerH,t,o.outerOpacity);add(cx-g-o.outerH,cy-t/2,o.outerH,t,o.outerOpacity);add(cx-t/2,cy-g-o.outerV,t,o.outerV,o.outerOpacity);add(cx-t/2,cy+g,t,o.outerV,o.outerOpacity)}
- if(o.dot){let d=o.dotSize;add(cx-d/2,cy-d/2,d,d,o.dotOpacity)}
-}
-function vBuildCode(){
- const o=vGet();let x=['0','s','1','p',o.usePrimaryAds?1:0,'P','c','8','u',vHex8(o.color),'o',String(o.outline?o.outlineOpacity:0),'t',String(o.outlineThickness),'d',o.dot?1:0,'a',String(o.dotOpacity),'z',String(o.dotSize),'0b',o.inner?1:0,'0a',String(o.innerOpacity),'0l',String(o.innerH),'0v',String(o.innerV),'0g',o.innerH===o.innerV?0:1,'0t',String(o.innerThick),'0o',String(o.innerGap),'0m',o.moveError?1:0,'0s',String(o.moveMult),'0f',o.fireError?1:0,'0e',String(o.fireMult),'1b',o.outer?1:0,'1a',String(o.outerOpacity),'1l',String(o.outerH),'1v',String(o.outerV),'1g',o.outerH===o.outerV?0:1,'1t',String(o.outerThick),'1o',String(o.outerGap),'1m',o.outerMoveError?1:0,'1s',String(o.outerMoveMult),'1f',o.outerFireError?1:0,'1e',String(o.outerFireMult)];return x.join(';')
-}
-function vApplyCode(code){
- const tok=String(code||'').trim().split(';').filter(Boolean);if(!tok.length||tok[0]!=='0')throw new Error('Código não reconhecido.');let sec='G',map={};for(let i=1;i<tok.length;i++){if(['P','A','S'].includes(tok[i])){sec=tok[i];continue}let k=tok[i],v=tok[i+1];if(v===undefined)break;if(['P','A','S'].includes(v))continue;map[sec+':'+k]=v;i++}
- const set=(id,v,type='value')=>{let e=$(id);if(!e||v===undefined)return;if(type==='check')e.checked=String(v)==='1';else e.value=v};
- let custom=map['P:u'];if(custom&&/^[0-9A-Fa-f]{6,8}$/.test(custom))set('vColor','#'+custom.slice(0,6));set('vOutline',(+map['P:o']||0)>0,'check');set('vOutlineOpacity',map['P:o']);set('vOutlineThickness',map['P:t']);set('vDot',map['P:d'],'check');set('vDotOpacity',map['P:a']);set('vDotSize',map['P:z']);set('vInner',map['P:0b'],'check');set('vInnerOpacity',map['P:0a']);set('vInnerH',map['P:0l']);set('vInnerV',map['P:0v']??map['P:0l']);set('vInnerThick',map['P:0t']);set('vInnerGap',map['P:0o']);set('vMoveError',map['P:0m'],'check');set('vMoveMult',map['P:0s']);set('vFireError',map['P:0f'],'check');set('vFireMult',map['P:0e']);set('vOuter',map['P:1b'],'check');set('vOuterOpacity',map['P:1a']);set('vOuterH',map['P:1l']);set('vOuterV',map['P:1v']??map['P:1l']);set('vOuterThick',map['P:1t']);set('vOuterGap',map['P:1o']);set('vOuterMoveError',map['P:1m'],'check');set('vOuterMoveMult',map['P:1s']);set('vOuterFireError',map['P:1f'],'check');set('vOuterFireMult',map['P:1e']);if(map['G:p']!==undefined)set('vUsePrimaryAds',map['G:p'],'check');valUpdate();
-}
-function vPreset(name){const p={micro:{color:'#00ffff',outline:false,dot:false,inner:true,innerH:2,innerV:2,innerThick:1,innerGap:1,innerOpacity:1,outer:false,moveError:false,fireError:false},classic:{color:'#ffffff',outline:true,outlineOpacity:.5,outlineThickness:1,dot:false,inner:true,innerH:4,innerV:4,innerThick:2,innerGap:2,innerOpacity:1,outer:false,moveError:false,fireError:false},dot:{color:'#ffffff',outline:true,outlineOpacity:.5,outlineThickness:1,dot:true,dotOpacity:1,dotSize:2,inner:false,outer:false},dynamic:{color:'#00ff7f',outline:false,dot:false,inner:true,innerH:3,innerV:3,innerThick:1,innerGap:2,innerOpacity:1,outer:false,moveError:true,moveMult:.2,fireError:true,fireMult:.2}}[name];if(!p)return;for(const [k,v] of Object.entries(p)){let id='v'+k.charAt(0).toUpperCase()+k.slice(1),e=$(id);if(!e)continue;if(typeof v==='boolean')e.checked=v;else e.value=v}valUpdate()}
-function vSavedRender(){let host=$('vSavedList');if(!host)return;let arr=JSON.parse(localStorage.getItem('voidcore_val_presets')||'[]');host.innerHTML=arr.length?'':'<span class="muted">Nenhum preset salvo.</span>';arr.forEach((x,i)=>{let d=document.createElement('div');d.className='saved-item';d.innerHTML=`<code>${x.name}</code><button type="button">Carregar</button>`;d.querySelector('button').onclick=()=>{try{vApplyCode(x.code);$('vCode').value=x.code}catch(e){}};host.appendChild(d)})}
-function valUpdate(){
- if(!$('vDpi'))return;let dpi=+$('vDpi').value||0,s=+$('vSens').value||0,cm=cm360(dpi,s,GAME.valorant.yaw);$('vEdpi').textContent=fmt(dpi*s,0)+' eDPI';$('vCm').textContent=fmt(cm)+' cm/360°';if(!$('vInnerH'))return;let o=vGet();
- const txt={vOpacityV:vPct(o.opacity),vOutlineOpacityV:vPct(o.outlineOpacity),vOutlineThicknessV:o.outlineThickness,vDotOpacityV:vPct(o.dotOpacity),vDotSizeV:o.dotSize,vInnerHV:o.innerH,vInnerVV:o.innerV,vInnerThickV:o.innerThick,vInnerGapV:o.innerGap,vInnerOpacityV:vPct(o.innerOpacity),vMoveMultV:o.moveMult.toFixed(2),vFireMultV:o.fireMult.toFixed(2),vOuterHV:o.outerH,vOuterVV:o.outerV,vOuterThickV:o.outerThick,vOuterGapV:o.outerGap,vOuterOpacityV:vPct(o.outerOpacity),vOuterMoveMultV:o.outerMoveMult.toFixed(2),vOuterFireMultV:o.outerFireMult.toFixed(2)};for(const [id,v] of Object.entries(txt))if($(id))$(id).textContent=v;
- const sh=(id,on)=>$(id)?.classList.toggle('hidden',!on);sh('vOutlineOpacityRow',o.outline);sh('vOutlineThicknessRow',o.outline);sh('vDotOpacityRow',o.dot);sh('vDotSizeRow',o.dot);['H','V','Thick','Gap','Opacity'].forEach(k=>sh('vInner'+k+'Row',o.inner));sh('vMoveErrorRow',o.inner);sh('vFireErrorRow',o.inner);sh('vMoveMultRow',o.inner&&o.moveError);sh('vFireMultRow',o.inner&&o.fireError);['H','V','Thick','Gap','Opacity'].forEach(k=>sh('vOuter'+k+'Row',o.outer));sh('vOuterMoveErrorRow',o.outer);sh('vOuterFireErrorRow',o.outer);sh('vOuterMoveMultRow',o.outer&&o.outerMoveError);sh('vOuterFireMultRow',o.outer&&o.outerFireError);
- let stateName=vPreviewState==='idle'?'PARADO':vPreviewState==='move'?'CORRENDO':vPreviewState==='fire'?'ATIRANDO':'AUTO';$('vStateLabel').textContent=stateName;vRender($('vCross'),o);let sd=$('vSniperDot');if(sd){sd.style.width=sd.style.height=(4+o.sniperThickness*3)+'px';sd.style.background=o.sniperColor;sd.style.opacity=o.sniperOpacity}
+const range = (id, label, val, min, max, step = 1) =>
+  field(id, label, 'range', val, { min, max, step });
+const check = (id, label, val = false) => field(id, label, 'checkbox', val);
+const select = (id, label, val, options) => field(id, label, 'select', val, { options });
+const number = (id, label, val, min = 0.000001, step = 'any', help = '') =>
+  field(id, label, 'number', val, { min, step, help });
+const details = (title, content) => `<details><summary>${title}</summary>${content}</details>`;
+function setupBackup() {
+  const dialog = document.createElement('dialog');
+  dialog.className='backup-dialog';
+  dialog.innerHTML='<div class="section-heading"><h2>Seu workspace, com você.</h2><button id="backupClose" class="ghost" aria-label="Fechar backup">✕</button></div><p class="hint">Exporte miras, setups e histórico deste navegador. Ao restaurar, apenas as chaves do arquivo são atualizadas; uma cópia dos valores anteriores fica guardada.</p><div class="actions"><button class="primary" id="backupExport">Exportar backup JSON</button><label class="button" for="backupFile">Restaurar arquivo</label><input hidden type="file" id="backupFile" accept="application/json,.json"></div><p id="backupStatus" role="status"></p>';
+  document.body.append(dialog);
+  $('backupOpen').onclick=()=>dialog.showModal();
+  $('backupClose').onclick=()=>dialog.close();
+  $('backupExport').onclick=()=>{
+    try {
+      const data={};
+      for(let i=0;i<localStorage.length;i++) { const key=localStorage.key(i); if(key.startsWith('voidcore_') && !key.endsWith('_backup')) data[key]=JSON.parse(localStorage.getItem(key)); }
+      download('voidcore-workspace-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({format:'voidcore-workspace',version:1,data},null,2),'application/json');
+      $('backupStatus').textContent='Backup exportado.';
+    } catch { $('backupStatus').textContent='Falha ao exportar. Os dados locais foram preservados.'; }
+  };
+  $('backupFile').onchange=async e=>{
+    try {
+      const file=e.target.files[0]; if(!file) return;
+      if(file.size>2000000) throw Error('Arquivo muito grande.');
+      const pack=JSON.parse(await file.text());
+      if(pack.format!=='voidcore-workspace'||pack.version!==1||!pack.data||Array.isArray(pack.data)||typeof pack.data!=='object') throw Error('Formato inválido.');
+      const entries=Object.entries(pack.data);
+      if(!entries.length||entries.length>100) throw Error('Quantidade de dados inválida.');
+      const keys=['voidcore_cs2_crosshair_v4','voidcore_val_crosshair_v4','voidcore_cs2_viewmodel_v4','voidcore_cs2_sensitivity_v4','voidcore_valorant_sensitivity_v4','voidcore_r6_sensitivity_v4','voidcore_val_presets','voidcore_sensi_history','voidcore_converter_draft_v4','voidcore_calibration_v4','voidcore_cs2_crosshair_v3'];
+      for(const [key,value] of entries) {
+        if(!keys.includes(key)||!value||typeof value!=='object') throw Error('Chave ou conteúdo incompatível: '+key);
+        if(key==='voidcore_val_presets'||key==='voidcore_sensi_history') { if(!Array.isArray(value)||value.length>1000) throw Error('Lista inválida: '+key); }
+        else if(Array.isArray(value)) throw Error('Perfil inválido: '+key);
+        if(key==='voidcore_cs2_viewmodel_v4') vmCode(value);
+        if(key==='voidcore_cs2_crosshair_v4') csCommands(value);
+        if(key.endsWith('_sensitivity_v4')) { if(!Number.isFinite(Number(value.dpi))||Number(value.dpi)<=0||!Number.isFinite(Number(value.sens))||Number(value.sens)<=0) throw Error('Setup inválido: '+key); }
+      }
+      const before=Object.fromEntries(entries.map(([k])=>[k,localStorage.getItem(k)]));
+      try {
+        localStorage.setItem('voidcore_restore_backup',JSON.stringify(before));
+        for(const [k,v] of entries) localStorage.setItem(k,JSON.stringify(v));
+      } catch(err) { for(const [k,v] of Object.entries(before)) { if(v===null)localStorage.removeItem(k); else localStorage.setItem(k,v); } throw err; }
+      $('backupStatus').textContent='Backup restaurado. Reabra o módulo para carregar os valores.';
+    } catch(err) { $('backupStatus').textContent='Falha: '+err.message; }
+    e.target.value='';
+  };
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
- if(!$('vDpi'))return;
- const ids=['vDpi','vSens','vColor','vOpacity','vOutline','vOutlineOpacity','vOutlineThickness','vDot','vDotOpacity','vDotSize','vInner','vInnerH','vInnerV','vInnerThick','vInnerGap','vInnerOpacity','vMoveError','vMoveMult','vFireError','vFireMult','vOuter','vOuterH','vOuterV','vOuterThick','vOuterGap','vOuterOpacity','vOuterMoveError','vOuterMoveMult','vOuterFireError','vOuterFireMult','vUsePrimaryAds','vSniperColor','vSniperOpacity','vSniperThickness'];bind(ids,valUpdate);
- document.querySelectorAll('[data-v-preset]').forEach(b=>b.addEventListener('click',()=>vPreset(b.dataset.vPreset)));
- $('vGenerate')?.addEventListener('click',()=>{$('vCode').value=vBuildCode();$('vCodecStatus').textContent='Código gerado pelo mapeamento comunitário validado para as chaves usadas neste editor.'});
- $('vImport')?.addEventListener('click',()=>{try{vApplyCode($('vCode').value);$('vCodecStatus').textContent='Código importado. Campos não mapeados foram preservados fora do editor.'}catch(e){$('vCodecStatus').textContent='Falha: '+e.message}});
- $('vCopyCode')?.addEventListener('click',function(){let c=$('vCode').value||vBuildCode();$('vCode').value=c;copyText(c,this)});
- $('vSavePreset')?.addEventListener('click',()=>{let arr=JSON.parse(localStorage.getItem('voidcore_val_presets')||'[]'),code=$('vCode').value||vBuildCode();arr.unshift({name:'Preset '+new Date().toLocaleString('pt-BR'),code});arr=arr.slice(0,15);localStorage.setItem('voidcore_val_presets',JSON.stringify(arr));vSavedRender();$('vCodecStatus').textContent='Preset salvo localmente.'});
- $('vClearSaved')?.addEventListener('click',()=>{localStorage.removeItem('voidcore_val_presets');vSavedRender()});
- vSavedRender();valUpdate();$('vCode').value=vBuildCode();
-});
+function shell(content) {
+  const nav = [
+    ['home', 'index.html', '⌂', 'Visão geral'],
+    ['cs2', 'cs2.html', '01', 'Counter-Strike 2'],
+    ['valorant', 'valorant.html', '02', 'VALORANT'],
+    ['r6', 'r6.html', '03', 'Rainbow Six Siege'],
+    ['sensi', 'sensi.html', '◎', 'Sensi Hub'],
+  ];
+  $('app').innerHTML =
+    `<aside class="sidebar" id="sidebar"><a href="index.html" class="brand" aria-label="VØIDCORE início"><img class="brand-wordmark" src="assets/wordmark.svg" alt="VØIDCORE"></a><div class="nav-caption">WORKSPACE / V4.3</div><nav class="nav" aria-label="Navegação principal">${nav.map(([p, url, icon, title]) => `<a href="${url}" class="${page === p ? 'current' : ''}" ${page === p ? 'aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${icon}</span>${title}</a>`).join('')}</nav><div class="sidebar-foot"><span class="status-dot"></span>Ferramentas locais<br><span class="hint">TOOLS FOR A HIGHER STANDARD</span></div></aside><div class="shell"><header class="topbar"><div class="actions"><button class="menu-toggle ghost" aria-expanded="false" aria-controls="sidebar" aria-label="Abrir navegação">☰</button><span>Workspace <span class="muted">/</span> <b>${page === 'home' ? 'Visão geral' : page === 'sensi' ? 'Sensi Hub' : GAME[page].name}</b></span></div><div class="top-right"><span class="tag">PRECISION TOOLKIT</span><button class="small ghost" id="backupOpen">Backup</button><span class="version">V4.3</span></div></header><main id="main">${content}</main><footer><span>VØIDCORE © 2026</span><span>PRECISION. PERFORMANCE. CONTROL.</span><span>LOCAL FIRST / V4.3</span></footer></div>`;
+  document.querySelector('.menu-toggle').onclick = function () {
+    const on = $('sidebar').classList.toggle('open');
+    this.setAttribute('aria-expanded', on);
+    this.setAttribute('aria-label', on ? 'Fechar navegação' : 'Abrir navegação');
+    document.body.classList.toggle('nav-open', on);
+  };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      $('sidebar').classList.remove('open');
+      document.body.classList.remove('nav-open');
+      document.querySelector('.menu-toggle').setAttribute('aria-expanded', 'false');
+    }
+  });
+  setupBackup();
+  document.title = `${page === 'home' ? 'Tools for a higher standard' : page === 'sensi' ? 'Sensi Hub' : GAME[page].name} — VØIDCORE V4.3`;
+}
+function pageHead(kicker, title, subtitle, tag = 'LOCAL WORKSPACE') {
+  return `<div class="page-head"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p>${subtitle}</p></div><span class="tag">${tag}</span></div>`;
+}
+function tabs() {
+  const modules =
+    page === 'cs2'
+      ? [
+          ['crosshair', 'Mira'],
+          ['sensitivity', 'Sensibilidade'],
+          ['viewmodel', 'Viewmodel'],
+          ['configs', 'Configurações'],
+        ]
+      : page === 'valorant'
+        ? [
+            ['crosshair', 'Mira'],
+            ['sensitivity', 'Sensibilidade'],
+            ['configs', 'Configurações'],
+          ]
+        : [['sensitivity', 'Sensibilidade']];
+  return `<nav class="tabs" aria-label="Módulos ${GAME[page].name}">${modules.map(([key, label]) => `<a href="${page}.html?module=${key}" class="${moduleName === key ? 'active' : ''}" ${moduleName === key ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+}
+function dashboard() {
+  return '<div class="section-heading dashboard-title"><h2>Seu setup em um olhar</h2><span>NESTE NAVEGADOR</span></div><div class="setup-grid">'+['cs2','valorant','r6'].map(game=>{
+    const s=storageRead('voidcore_'+game+'_sensitivity_v4',null);
+    const valid=s && Number.isFinite(+s.dpi) && +s.dpi>0 && Number.isFinite(+s.sens) && +s.sens>0;
+    const cm=valid ? game==='r6' ? +s.measuredCm : cm360(+s.dpi,+s.sens,game==='cs2' ? +(s.yaw || 0.022) : 0.07) : 0;
+    return `<a class="setup-card" href="${game}.html?module=sensitivity"><span class="eyebrow">${GAME[game].name}</span><strong>${cm>0 ? fmt(cm)+' <small>cm/360°</small>' : 'Configure seu setup'}</strong><span class="hint">${valid ? esc(s.dpi)+' DPI · '+esc(s.sens)+' sens' : 'Salve a sensibilidade para ver aqui.'}</span><span class="setup-link">${valid ? 'Ajustar setup' : 'Começar'} ↗</span></a>`;
+  }).join('')+'</div>';
+}
+
+function home() {
+  shell(
+    `<section class="hero"><div><div class="eyebrow">COMPETITIVE TOOLS / V4</div><h1>Seu próximo nível.<br><em>Em cada detalhe.</em></h1><p>Menos distração. Mais controle. Um workspace para ajustar sua mira, calibrar sua sensibilidade e refinar o que importa.</p><div class="actions"><a class="button primary" href="cs2.html">Abrir CS2 workspace <span aria-hidden="true">↗</span></a><a class="button ghost" href="sensi.html">Calibrar sensibilidade</a></div></div><div class="hero-visual" aria-hidden="true"><div class="orbit"></div><div class="orbit inner"></div><img src="assets/symbol.svg" alt=""><span class="visual-label">THE CORE OF YOUR CONTROL</span></div></section><section><div class="section-heading"><h2>Escolha seu workspace</h2><span>01 — 04</span></div><div class="game-list">${[
+      ['01', 'cs2.html', 'Counter-Strike 2', 'Mira, sensibilidade, viewmodel e configurações.'],
+      ['02', 'valorant.html', 'VALORANT', 'Mira, códigos de perfil e sensibilidade.'],
+      ['03', 'r6.html', 'Rainbow Six Siege', 'Hipfire e escala física com seu multiplier.'],
+      ['04', 'sensi.html', 'Sensi Hub', 'Calibre, converta e compare em um passo de cada vez.'],
+    ]
+      .map(
+        ([n, url, title, desc]) =>
+          `<a class="game-entry" href="${url}"><span class="game-number">${n}</span><strong>${title}</strong><p>${desc}</p><span class="arrow" aria-hidden="true">↗</span></a>`,
+      )
+      .join(
+        '',
+      )}</div></section><div class="principle"><span class="metric">cm / 360°</span><div><h3>Uma referência física. Entre jogos.</h3><p>Sensibilidades iguais podem produzir movimentos diferentes. Use a distância física para comparar hipfire; use o teste no jogo para encontrar seu controle.</p></div></div>${dashboard()}`,
+  );
+}
+const sceneArt = '<img class="scene-image" src="assets/range-render.png" alt="" aria-hidden="true">';
+function preview(kind = 'cs2') {
+  return `<div class="canvas-panel"><div class="panel-bar"><h3>${kind === 'vm' ? 'Viewmodel Studio' : 'Crosshair Studio'}</h3><small>PREVIEW INTERATIVO</small></div><div class="preview" id="preview" data-scene="dark" data-kind="${kind}">${sceneArt}<div class="preview-meta"><span id="resolutionLabel">1920 × 1080 · referência</span><span id="stateLabel">PARADO</span></div>${kind === 'vm' ? '<div id="model" class="weapon-model"><img src="assets/viewmodel-ak47.png" alt="AK-47 em perspectiva de primeira pessoa"></div><div class="aim-marker"></div><span class="model-caption">RIFLE / ENQUADRAMENTO</span>' : `<div id="${kind === 'cs2' ? 'csCross' : 'vCross'}" class="crosshair ${kind === 'valorant' ? 'valorant' : ''}" aria-label="Prévia visual da mira"></div>`}<div class="preview-foot"><span>${kind === 'vm' ? 'ENQUADRAMENTO APROXIMADO' : 'FOCUS / CENTER'}</span><span>VØIDCORE STUDIO</span></div></div>${
+    kind === 'vm'
+      ? ''
+      : `<div class="panel-bar"><div class="states" aria-label="Estado do preview">${[
+          ['idle', 'Parado'],
+          ['move', 'Movimento'],
+          ['fire', 'Disparo'],
+        ]
+          .map(
+            ([s, label]) =>
+              `<button data-state="${s}" class="${s === 'idle' ? 'active' : ''}" aria-pressed="${s === 'idle'}">${label}</button>`,
+          )
+          .join('')}</div><div class="preview-zoom" aria-label="Ampliação do preview"><span>Zoom</span><button data-zoom="1" class="active" aria-pressed="true">1×</button><button data-zoom="2" aria-pressed="false">2×</button><button data-zoom="4" aria-pressed="false">4×</button></div></div>`
+  }<div class="preview-note">${kind === 'vm' ? 'AK-47 em perspectiva de primeira pessoa, com FOV e offsets ajustáveis. Referência ilustrativa; confira o resultado final no CS2.' : 'Mira renderizada sobre cenário ilustrativo. Use 1× para a escala base ou amplie para inspecionar os detalhes.'}</div></div>`;
+}
+function bindInputs(update) {
+  document.querySelectorAll('main input,main select').forEach((el) => {
+    el.addEventListener('input', update);
+    el.addEventListener('change', update);
+  });
+  update();
+}
+function outputs() {
+  document.querySelectorAll('input[type=range]').forEach((e) => {
+    const out = $(e.id + 'V');
+    if (out) out.textContent = e.value;
+  });
+}
+function show(id, on) {
+  const el = $(id);
+  if (el) el.hidden = !on;
+}
+function localControls(title) {
+  return `<div class="divider"></div><div class="actions"><button class="small" id="saveLocal">Salvar preset</button><button class="small ghost" id="loadLocal">Carregar salvo</button></div><p class="save-status" id="saveStatus" role="status">${title}</p>`;
+}
+function captureFields() {
+  return Object.fromEntries(
+    [...document.querySelectorAll('main input[id],main select[id]')].filter(e => e.type !== 'file').map((e) => [
+      e.id,
+      e.type === 'checkbox' ? e.checked : e.value,
+    ]),
+  );
+}
+function validateFields(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Preset inválido.');
+  const changes = [];
+  for (const [id, v] of Object.entries(data)) {
+    const el = $(id);
+    if (!el || !el.matches('main input,main select') || el.type === 'file') continue;
+    if (el.type === 'checkbox') {
+      if (typeof v !== 'boolean') throw Error('Estado inválido: ' + id);
+    } else if (el.tagName === 'SELECT') {
+      if (![...el.options].some((o) => o.value === v)) throw Error('Opção inválida: ' + id);
+    } else if (el.type === 'color') {
+      if (!/^#[0-9a-f]{6}$/i.test(v)) throw Error('Cor inválida.');
+    } else if (['range', 'number'].includes(el.type)) {
+      if (
+        (typeof v !== 'number' && typeof v !== 'string') || v === '' ||
+        !Number.isFinite(+v) ||
+        (el.min !== '' && +v < +el.min) ||
+        (el.max !== '' && +v > +el.max)
+      )
+        throw Error('Valor fora da faixa: ' + id);
+    }
+    changes.push([el, v]);
+  }
+  if (!changes.length) throw Error('Nenhum campo compatível.');
+  return changes;
+}
+function applyFields(data) {
+  validateFields(data).forEach(([el, v]) => {
+    if (el.type === 'checkbox') el.checked = v;
+    else el.value = v;
+  });
+}
+function presetStorage(key, update, legacy) {
+  $('saveLocal').onclick = () => {
+    if (storageWrite(key, captureFields())) {
+      $('saveStatus').textContent = 'Preset salvo neste navegador.';
+      if (key === 'voidcore_val_crosshair_v4') {
+        let library = storageRead('voidcore_val_presets', []);
+        if (!Array.isArray(library)) library = [];
+        library.unshift({
+          name: 'Preset V4 · ' + new Date().toLocaleString('pt-BR'),
+          code: vBuildCode(),
+        });
+        storageWrite('voidcore_val_presets', library.slice(0, 15));
+      }
+    }
+  };
+  $('loadLocal').onclick = () => {
+    let data = storageRead(key, null);
+    if (!data && legacy) {
+      data = storageRead(legacy, null);
+      if (data?.dot !== undefined) {
+        data.csDot = data.dot;
+        delete data.dot;
+      }
+      if (data?.scopeColor !== undefined) {
+        data.csScopeColor = data.scopeColor;
+        delete data.scopeColor;
+      }
+    }
+    if (!data) {
+      $('saveStatus').textContent = 'Nenhum preset salvo ainda.';
+      return;
+    }
+    try {
+      applyFields(data);
+      update();
+      $('saveStatus').textContent = 'Preset carregado.';
+    } catch (e) {
+      $('saveStatus').textContent = e.message;
+    }
+  };
+}
+function crosshair() {
+  const cs = page === 'cs2';
+  const styles = [
+    ['static', 'Cruz estática'],
+    ['circleStatic', 'Círculo estático'],
+    ['square', 'Quadrado estático'],
+    ['dotOnly', 'Apenas ponto'],
+    ['staticQuad', 'Static Quadrant'],
+    ['dynamic', 'Cruz dinâmica'],
+    ['circleDynamic', 'Círculo dinâmico'],
+    ['classicDynamic', 'Dinâmica clássica'],
+    ['responsiveDynamic', 'Disparo responsivo'],
+    ['dynamicQuad', 'Dynamic Quadrant'],
+  ];
+  const commonScene = select('scene', 'Cenário', 'dark', [
+    ['dark', 'Estúdio · noite'],
+    ['dust', 'Estúdio · luz quente'],
+    ['mirage', 'Estúdio · luz fria'],
+    ['inferno', 'Estúdio · natural'],
+  ]);
+  let controls = cs
+    ? select('csStyle', 'Geometria', 'static', styles) +
+      range('csSize', 'Tamanho', 8, 0, 36, 0.5) +
+      range('csGap', 'Espaçamento', 4, -10, 30, 0.5) +
+      range('csThick', 'Espessura', 2, 0, 8, 0.5) +
+      range('csQuadrant', 'Quadrant size', 0.42, 0.08, 1, 0.01) +
+      field('csColor', 'Cor', 'color', '#a393ff') +
+      check('csDot', 'Ponto central') +
+      details(
+        'Ajustes avançados',
+        range('csAlpha', 'Opacidade', 100, 0, 100) +
+          select('csOutlineMode', 'Contorno', 'full', [
+            ['full', 'Completo'],
+            ['half', 'Parcial · visual'],
+            ['none', 'Sem contorno'],
+          ]) +
+          field('csOutlineColor', 'Cor do contorno', 'color', '#000000') +
+          range('csOutlineAlpha', 'Opacidade do contorno', 100, 0, 100) +
+          range('csSpread', 'Variação dinâmica', 242, 64, 320) +
+          range('csSplit', 'Separação no disparo', 7, 0, 20) +
+          range('csInnerAlpha', 'Opacidade interna', 100, 0, 100) +
+          check('csTStyle', 'Formato T') +
+          check('csScopeColor', 'Manter cor na luneta', true) +
+          range('csScopeScale', 'Escala da luneta', 0.16, 0.05, 1, 0.01) +
+          check('csFollowRecoil', 'Seguir coice · referência') +
+          select('csResolution', 'Resolução de referência', '1920x1080', [
+            ['1280x720', '1280 × 720'],
+            ['1280x960', '1280 × 960'],
+            ['1440x1080', '1440 × 1080'],
+            ['1920x1080', '1920 × 1080'],
+            ['2560x1440', '2560 × 1440'],
+          ]) +
+          commonScene,
+      )
+    : field('vColor', 'Cor', 'color', '#a393ff') +
+      check('vInner', 'Linhas internas', true) +
+      range('vInnerH', 'Comprimento horizontal', 4, 0, 20) +
+      range('vInnerV', 'Comprimento vertical', 4, 0, 20) +
+      range('vInnerThick', 'Espessura', 2, 0, 10) +
+      range('vInnerGap', 'Espaçamento', 2, 0, 20) +
+      check('vDot', 'Ponto central') +
+      range('vDotSize', 'Tamanho do ponto', 2, 1, 6) +
+      details(
+        'Ajustes avançados',
+        range('vOpacity', 'Opacidade geral · preview', 1, 0, 1, 0.05) +
+          range('vInnerOpacity', 'Opacidade interna', 1, 0, 1, 0.05) +
+          check('vOutline', 'Contorno', true) +
+          range('vOutlineOpacity', 'Opacidade do contorno', 0.5, 0, 1, 0.05) +
+          range('vOutlineThickness', 'Espessura do contorno', 1, 1, 6) +
+          range('vDotOpacity', 'Opacidade do ponto', 1, 0, 1, 0.05) +
+          check('vMoveError', 'Erro de movimento') +
+          range('vMoveMult', 'Multiplicador de movimento', 0.2, 0, 3, 0.01) +
+          check('vFireError', 'Erro de disparo') +
+          range('vFireMult', 'Multiplicador de disparo', 0.2, 0, 3, 0.01) +
+          check('vOuter', 'Linhas externas') +
+          range('vOuterH', 'Comprimento externo H', 2, 0, 20) +
+          range('vOuterV', 'Comprimento externo V', 2, 0, 20) +
+          range('vOuterThick', 'Espessura externa', 2, 0, 10) +
+          range('vOuterGap', 'Espaçamento externo', 10, 0, 40) +
+          range('vOuterOpacity', 'Opacidade externa', 1, 0, 1, 0.05) +
+          check('vOuterMoveError', 'Erro externo de movimento') +
+          range('vOuterMoveMult', 'Multiplicador externo de movimento', 0.2, 0, 3, 0.01) +
+          check('vOuterFireError', 'Erro externo de disparo') +
+          range('vOuterFireMult', 'Multiplicador externo de disparo', 0.2, 0, 3, 0.01) +
+          check('vUsePrimaryAds', 'Usar principal em ADS', true) +
+          details(
+            'Sniper · referência visual',
+            field('vSniperColor', 'Cor do ponto', 'color', '#ff0000') +
+              range('vSniperOpacity', 'Opacidade do ponto sniper', 0.75, 0, 1, 0.05) +
+              range('vSniperThickness', 'Espessura do ponto sniper', 1, 1, 6) +
+              '<div class="sniper-sample" aria-label="Referência visual do ponto sniper"><span id="vSniperDot"></span></div><p class="hint">Referência separada. Estes campos não entram no código principal.</p>',
+          ) +
+          commonScene,
+      );
+  shell(
+    pageHead(
+      cs ? 'COUNTER-STRIKE 2 / STUDIO' : 'VALORANT / STUDIO',
+      'A precisão começa aqui.',
+      'Ajuste sua mira com espaço para ver. Revele os detalhes quando precisar.',
+    ) +
+      tabs() +
+      `<div class="workspace studio"><section>${preview(page)}<div class="under-preview"><div class="section-heading"><h3>Pontos de partida</h3><span>PRESETS DO WORKSPACE</span></div><div class="presets">${(cs
+        ? [
+            ['precision', 'Precisão'],
+            ['spray', 'Spray'],
+            ['dot', 'Ponto'],
+            ['quadrant', 'Quadrant'],
+          ]
+        : [
+            ['micro', 'Micro'],
+            ['classic', 'Clássica'],
+            ['dot', 'Ponto'],
+            ['dynamic', 'Dinâmica'],
+          ]
+      )
+        .map(([k, l]) => `<button data-preset="${k}">${l}</button>`)
+        .join(
+          '',
+        )}</div><div class="notice" id="compatibility"></div><div class="io"><div class="section-heading"><h3>${cs ? 'Comandos compatíveis' : 'Código de perfil'}</h3><button class="small ghost" id="copyCode">Copiar ${cs ? 'comandos' : 'código'}</button></div><pre class="codebox" id="crossCode" tabindex="0"></pre>${details('Importar / exportar', `<label for="importCode" class="hint">${cs ? 'Comandos cl_crosshair separados por ponto e vírgula' : 'Código VALORANT 0;…;P;…'}</label><textarea class="import-area" id="importCode" placeholder="Cole seu ${cs ? 'conjunto de comandos' : 'código'} aqui"></textarea><div class="actions"><button class="small primary" id="importBtn">Aplicar</button><button class="small" id="exportJSON">Exportar preset JSON</button><label class="button small ghost" for="importFile">Abrir JSON</label><input type="file" id="importFile" accept=".json,application/json" hidden></div><p class="save-status" id="importStatus" role="status"></p>`)}</div></div></section><aside class="control-panel" aria-label="Controles da mira"><div class="control-title"><h3>Configurar mira</h3><span>01 / ${cs ? 'CS2' : 'VAL'}</span></div>${controls}${localControls('Salvo apenas neste navegador.')}</aside></div>`,
+  );
+  const update = () => {
+    outputs();
+    $('preview').dataset.scene = $('scene').value;
+    if (cs) {
+      const s = $('csStyle').value,
+        circle = s.startsWith('circle'),
+        quad = s.includes('Quad'),
+        dot = s === 'dotOnly',
+        classic = s === 'classicDynamic';
+      show('csSizeRow', !(circle || s === 'square' || dot || s === 'staticQuad'));
+      show('csGapRow', !dot);
+      show('csQuadrantRow', quad);
+      show('csDotRow', !dot);
+      show('csTStyleRow', !circle && !quad && !dot && s !== 'square');
+      show('csSpreadRow', ['dynamic', 'dynamicQuad', 'circleDynamic'].includes(s));
+      show('csSplitRow', classic);
+      show('csInnerAlphaRow', classic);
+      show('csScopeColorRow', circle || quad || dot || s === 'square');
+      show('csScopeScaleRow', circle || quad || dot || s === 'square');
+      show('csFollowRecoilRow', dot);
+      $('resolutionLabel').textContent =
+        $('csResolution').value.replace('x', ' × ') + ' · referência';
+      csPixelCross(
+        $('csCross'),
+        +$('csSize').value,
+        +$('csGap').value,
+        +$('csThick').value,
+        $('csColor').value,
+        $('csDot').checked,
+        $('csOutlineMode').value,
+        s,
+        +$('csSpread').value,
+      );
+      $('crossCode').textContent = csCommands();
+      $('compatibility').textContent = ['static', 'classicDynamic', 'responsiveDynamic'].includes(s)
+        ? 'A geometria usa comandos existentes. Cor e opacidade do contorno, separação e escala visual podem diferir no jogo.'
+        : 'Geometria visual de referência. A exportação contém apenas ajustes compatíveis; esse formato não é reproduzido por cvars confirmadas.';
+    } else {
+      const o = vGet();
+      vRender($('vCross'), o);
+      const sniper = $('vSniperDot');
+      if (sniper) {
+        sniper.style.width = sniper.style.height = 4 + o.sniperThickness * 3 + 'px';
+        sniper.style.background = o.sniperColor;
+        sniper.style.opacity = o.sniperOpacity;
+      }
+      ['H', 'V', 'Thick', 'Gap', 'Opacity'].forEach((k) => {
+        show('vInner' + k + 'Row', o.inner);
+        show('vOuter' + k + 'Row', o.outer);
+      });
+      show('vDotSizeRow', o.dot);
+      show('vDotOpacityRow', o.dot);
+      show('vOutlineOpacityRow', o.outline);
+      show('vOutlineThicknessRow', o.outline);
+      show('vMoveErrorRow', o.inner);
+      show('vFireErrorRow', o.inner);
+      show('vMoveMultRow', o.inner && o.moveError);
+      show('vFireMultRow', o.inner && o.fireError);
+      show('vOuterMoveErrorRow', o.outer);
+      show('vOuterFireErrorRow', o.outer);
+      show('vOuterMoveMultRow', o.outer && o.outerMoveError);
+      show('vOuterFireMultRow', o.outer && o.outerFireError);
+      $('crossCode').textContent = vBuildCode();
+      $('compatibility').textContent =
+        'Código principal baseado no mapeamento presente na V3. Opacidade geral e cenário afetam somente o preview. ADS independente e sniper não são sobrescritos.';
+    }
+  };
+  bindInputs(update);
+  document.querySelectorAll('[data-zoom]').forEach(button=>button.onclick=()=>{
+    $('preview').style.setProperty('--reticle-zoom',button.dataset.zoom);
+    document.querySelectorAll('[data-zoom]').forEach(other=>{other.classList.toggle('active',other===button);other.setAttribute('aria-pressed',other===button);});
+  });
+  presetStorage(
+    cs ? 'voidcore_cs2_crosshair_v4' : 'voidcore_val_crosshair_v4',
+    update,
+    cs ? 'voidcore_cs2_crosshair_v3' : null,
+  );
+  document.querySelectorAll('[data-state]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        csPreviewState = vPreviewState = b.dataset.state;
+        document.querySelectorAll('[data-state]').forEach((x) => {
+          x.classList.toggle('active', x === b);
+          x.setAttribute('aria-pressed', x === b);
+        });
+        $('stateLabel').textContent = b.textContent.toUpperCase();
+        update();
+      }),
+  );
+  document.querySelectorAll('[data-preset]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (cs) {
+          const p = {
+            precision: ['static', 5, 3, 1, false, '#55ff88'],
+            spray: ['classicDynamic', 7, 4, 2, false, '#00e5ff'],
+            dot: ['dotOnly', 2, 0, 3, true, '#ff3355'],
+            quadrant: ['staticQuad', 8, 5, 2, false, '#a393ff'],
+          }[b.dataset.preset];
+          applyFields(
+            Object.fromEntries(
+              ['csStyle', 'csSize', 'csGap', 'csThick', 'csDot', 'csColor'].map((k, i) => [
+                k,
+                p[i],
+              ]),
+            ),
+          );
+        } else {
+          const p = {
+            micro: {
+              vColor: '#00ffff',
+              vOutline: false,
+              vDot: false,
+              vInner: true,
+              vInnerH: 2,
+              vInnerV: 2,
+              vInnerThick: 1,
+              vInnerGap: 1,
+              vInnerOpacity: 1,
+              vOuter: false,
+              vMoveError: false,
+              vFireError: false,
+            },
+            classic: {
+              vColor: '#ffffff',
+              vOutline: true,
+              vOutlineOpacity: 0.5,
+              vOutlineThickness: 1,
+              vDot: false,
+              vInner: true,
+              vInnerH: 4,
+              vInnerV: 4,
+              vInnerThick: 2,
+              vInnerGap: 2,
+              vInnerOpacity: 1,
+              vOuter: false,
+              vMoveError: false,
+              vFireError: false,
+            },
+            dot: {
+              vColor: '#ffffff',
+              vOutline: true,
+              vOutlineOpacity: 0.5,
+              vOutlineThickness: 1,
+              vDot: true,
+              vDotOpacity: 1,
+              vDotSize: 2,
+              vInner: false,
+              vOuter: false,
+            },
+            dynamic: {
+              vColor: '#00ff7f',
+              vOutline: false,
+              vDot: false,
+              vInner: true,
+              vInnerH: 3,
+              vInnerV: 3,
+              vInnerThick: 1,
+              vInnerGap: 2,
+              vInnerOpacity: 1,
+              vOuter: false,
+              vMoveError: true,
+              vMoveMult: 0.2,
+              vFireError: true,
+              vFireMult: 0.2,
+            },
+          }[b.dataset.preset];
+          applyFields(p);
+        }
+        update();
+      }),
+  );
+  $('copyCode').onclick = () => copyText($('crossCode').textContent);
+  $('exportJSON').onclick = () =>
+    download(
+      'voidcore-' + page + '-crosshair.json',
+      JSON.stringify({ version: 4, game: page, fields: captureFields() }, null, 2),
+      'application/json',
+    );
+  $('importFile').onchange = async (e) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 100000) throw Error('Arquivo muito grande.');
+      const data = JSON.parse(await file.text());
+      if (data.game !== page || data.version !== 4) throw Error('Preset de outro jogo ou versão.');
+      applyFields(data.fields);
+      update();
+      $('importStatus').textContent = 'Preset JSON importado.';
+    } catch (err) {
+      $('importStatus').textContent = 'Falha: ' + err.message;
+    }
+    e.target.value = '';
+  };
+  $('importBtn').onclick = () => {
+    try {
+      const message = cs ? importCS($('importCode').value) : importVAL($('importCode').value);
+      update();
+      $('importStatus').textContent = message;
+    } catch (err) {
+      $('importStatus').textContent = 'Falha: ' + err.message;
+    }
+  };
+}
+function csCommands(values) {
+  const s = values || captureFields();
+  const defaults = {csStyle:'static',csSize:8,csGap:4,csThick:2,csColor:'#a393ff',csDot:false,csOutlineMode:'full',csAlpha:100,csTStyle:false};
+  const o = {...defaults,...s};
+  for (const [id,min,max] of [['csSize',0,36],['csGap',-10,30],['csThick',0,8],['csAlpha',0,100]]) {
+    if (!Number.isFinite(Number(o[id])) || Number(o[id]) < min || Number(o[id]) > max) throw Error('Preset CS2 inválido: '+id);
+  }
+  if (!/^#[0-9a-f]{6}$/i.test(o.csColor)) throw Error('Cor CS2 inválida.');
+  const rgb = o.csColor.slice(1).match(/../g).map(v=>parseInt(v,16));
+  const dot = o.csStyle === 'dotOnly';
+  return [
+    `cl_crosshairstyle ${o.csStyle === 'classicDynamic' ? 2 : o.csStyle === 'responsiveDynamic' || o.csStyle === 'dynamic' ? 3 : 4}`,
+    `cl_crosshairsize ${dot ? 0 : Number(o.csSize)}`,
+    `cl_crosshairgap ${Number(o.csGap)}`,
+    `cl_crosshairthickness ${Number(o.csThick)}`,
+    `cl_crosshairdot ${o.csDot || dot ? 1 : 0}`,
+    `cl_crosshair_drawoutline ${o.csOutlineMode === 'none' ? 0 : 1}`,
+    'cl_crosshairusealpha 1',
+    `cl_crosshairalpha ${Math.round(Number(o.csAlpha)*255/100)}`,
+    'cl_crosshaircolor 5',
+    ...rgb.map((v,i)=>`cl_crosshaircolor_${['r','g','b'][i]} ${v}`),
+    `cl_crosshair_t ${o.csTStyle ? 1 : 0}`
+  ].join('; ')+';';
+}
+function importCS(raw) {
+  const mapping = {
+    cl_crosshairsize: 'csSize',
+    cl_crosshairgap: 'csGap',
+    cl_crosshairthickness: 'csThick',
+  };
+  const data = {},
+    rgb = {};
+  let count = 0;
+  for (const line of raw.split(/[;\n]+/)) {
+    const m = line.trim().match(/^(cl_crosshair\S+)\s+"?([^"\s]+)"?$/i);
+    if (!m) continue;
+    const k = m[1].toLowerCase(),
+      v = m[2];
+    if (!Number.isFinite(+v)) throw Error('Vale apenas valor numérico: ' + k);
+    if (mapping[k]) data[mapping[k]] = v;
+    else if (k === 'cl_crosshairstyle') {
+      if (![2, 3, 4].includes(+v)) throw Error('Estilo não suportado.');
+      data.csStyle = +v === 2 ? 'classicDynamic' : +v === 3 ? 'responsiveDynamic' : 'static';
+    } else if (k === 'cl_crosshairusealpha') {
+      if (![0,1].includes(+v)) throw Error('Estado alfa inválido.');
+      data.csUseAlpha = +v;
+    } else if (k === 'cl_crosshairalpha') {
+      if (+v < 0 || +v > 255) throw Error('Alfa fora de 0–255.');
+      data.csAlpha = Math.round(+v / 2.55);
+    } else if (['cl_crosshairdot', 'cl_crosshair_t', 'cl_crosshair_drawoutline'].includes(k)) {
+      if (![0, 1].includes(+v)) throw Error('Estado deve ser 0 ou 1.');
+      if (k === 'cl_crosshairdot') data.csDot = +v === 1;
+      else if (k === 'cl_crosshair_t') data.csTStyle = +v === 1;
+      else data.csOutlineMode = +v === 1 ? 'full' : 'none';
+    } else if (/^cl_crosshaircolor_[rgb]$/.test(k)) {
+      if (+v < 0 || +v > 255) throw Error('RGB fora de 0–255.');
+      rgb[k.slice(-1)] = Math.round(+v);
+    } else if (k === 'cl_crosshaircolor') {
+      const palette = ['#ff0000','#00ff00','#ffff00','#0000ff','#00ffff'];
+      if (![0,1,2,3,4,5].includes(+v)) throw Error('Cor desconhecida.');
+      if (+v !== 5) data.csColor = palette[+v];
+    } else continue;
+    count++;
+  }
+  if (['r', 'g', 'b'].every((k) => rgb[k] !== undefined))
+    data.csColor = '#' + ['r', 'g', 'b'].map((k) => rgb[k].toString(16).padStart(2, '0')).join('');
+  if (data.csUseAlpha === 0) data.csAlpha = 100;
+  delete data.csUseAlpha;
+  if (data.csSize !== undefined && +data.csSize === 0 && data.csDot === true) data.csStyle = 'dotOnly';
+  if (!count) throw Error('Nenhum comando compatível encontrado.');
+  applyFields(data);
+  return `${count} comandos reconhecidos. Outros comandos não foram aplicados.`;
+}
+function importVAL(raw) {
+  const tokens = raw.trim().split(';');
+  if (tokens[0] !== '0' || !tokens.includes('P')) throw Error('Código principal não reconhecido.');
+  let section = 'G',
+    map = {},
+    unknown = 0;
+  for (let i = 1; i < tokens.length;) {
+    if (['P', 'A', 'S'].includes(tokens[i])) {
+      section = tokens[i++];
+      continue;
+    }
+    const k = tokens[i++],
+      v = tokens[i++];
+    if (v === undefined || ['P', 'A', 'S'].includes(v)) throw Error('Código incompleto.');
+    if (map[section + ':' + k] !== undefined) throw Error('Campo duplicado: '+k);
+    map[section + ':' + k] = v;
+  }
+  const data = {vColor:'#ffffff',vOpacity:1,vOutline:true,vOutlineOpacity:0.5,vOutlineThickness:1,vDot:false,vDotOpacity:1,vDotSize:2,vInner:true,vInnerH:6,vInnerV:6,vInnerThick:2,vInnerGap:3,vInnerOpacity:0.8,vMoveError:true,vMoveMult:1,vFireError:true,vFireMult:1,vOuter:true,vOuterH:2,vOuterV:2,vOuterThick:2,vOuterGap:10,vOuterOpacity:0.35,vOuterMoveError:true,vOuterMoveMult:1,vOuterFireError:true,vOuterFireMult:1,vUsePrimaryAds:true};
+  const mapping = {
+    o: 'vOutlineOpacity',
+    t: 'vOutlineThickness',
+    d: 'vDot',
+    a: 'vDotOpacity',
+    z: 'vDotSize',
+    '0b': 'vInner',
+    '0a': 'vInnerOpacity',
+    '0l': 'vInnerH',
+    '0v': 'vInnerV',
+    '0t': 'vInnerThick',
+    '0o': 'vInnerGap',
+    '0m': 'vMoveError',
+    '0s': 'vMoveMult',
+    '0f': 'vFireError',
+    '0e': 'vFireMult',
+    '1b': 'vOuter',
+    '1a': 'vOuterOpacity',
+    '1l': 'vOuterH',
+    '1v': 'vOuterV',
+    '1t': 'vOuterThick',
+    '1o': 'vOuterGap',
+    '1m': 'vOuterMoveError',
+    '1s': 'vOuterMoveMult',
+    '1f': 'vOuterFireError',
+    '1e': 'vOuterFireMult',
+  };
+  for (const [k, v] of Object.entries(map)) {
+    if (k === 'P:u') {
+      if (!/^[a-f\d]{6}([a-f\d]{2})?$/i.test(v)) throw Error('Cor inválida.');
+      data.vColor = '#' + v.slice(0, 6);
+    } else if (k === 'P:c') {
+      const palette = [
+        '#ffffff',
+        '#00ff00',
+        '#7fff00',
+        '#dfff00',
+        '#ffff00',
+        '#00ffff',
+        '#ff00ff',
+        '#ff0000',
+      ];
+      if (+v !== 8) {
+        if (!palette[+v]) throw Error('Cor desconhecida.');
+        data.vColor = palette[+v];
+      }
+    } else if (k === 'G:p') {
+      if (!['0', '1'].includes(v)) throw Error('Estado ADS inválido.');
+      data.vUsePrimaryAds = v === '1';
+    } else if (k.startsWith('P:') && mapping[k.slice(2)]) {
+      const id = mapping[k.slice(2)];
+      if ($(id).type === 'checkbox') {
+        if (!['0', '1'].includes(v)) throw Error('Estado inválido.');
+        data[id] = v === '1';
+      } else data[id] = v;
+    } else if (!['P:0g', 'P:1g', 'G:s'].includes(k)) unknown++;
+  }
+  if (map['P:o'] !== undefined) data.vOutline = +map['P:o'] > 0;
+  if (map['P:0l'] !== undefined && map['P:0g'] !== '1') data.vInnerV = map['P:0l'];
+  if (map['P:1l'] !== undefined && map['P:1g'] !== '1') data.vOuterV = map['P:1l'];
+  for (const flag of ['0g','1g']) if (map['P:'+flag] !== undefined && !['0','1'].includes(map['P:'+flag])) throw Error('Estado inválido: '+flag);
+  applyFields(data);
+  return `Perfil principal importado.${unknown ? ' ' + unknown + ' campos de ADS/sniper ou não mapeados não foram importados.' : ''}`;
+}
+function positive(ids) {
+  let ok = true;
+  ids.forEach((id) => {
+    const e = $(id);
+    const valid =
+      e &&
+      e.value !== '' &&
+      Number.isFinite(+e.value) &&
+      +e.value > 0 &&
+      (!e.min || +e.value >= +e.min) &&
+      (!e.max || +e.value <= +e.max);
+    if (e) e.setAttribute('aria-invalid', !valid);
+    if (!valid) ok = false;
+  });
+  return ok;
+}
+function sensitivity() {
+  const r6 = page === 'r6',
+    saved = storageRead('voidcore_' + page + '_sensitivity_v4', {});
+  shell(
+    pageHead(
+      r6 ? 'RAINBOW SIX SIEGE / HIPFIRE' : GAME[page].name.toUpperCase() + ' / SENSITIVITY',
+      'Conheça seu movimento.',
+      'Uma referência clara para o seu ajuste. Use o teste no jogo para confirmar.',
+    ) +
+      tabs() +
+      `<div class="workspace"><section><div class="canvas-panel"><div class="panel-bar"><h3>${r6 ? 'Escala de hipfire' : 'Distância física'}</h3><small>${r6 ? 'MULTIPLIER' : 'HIPFIRE / 360°'}</small></div><div class="measure-stage"><div class="measure-label">${r6 ? 'MODIFICADOR DE ENTRADA' : 'UM GIRO COMPLETO'}</div><div class="measure" id="distance">—</div><div class="ruler" aria-hidden="true"></div><span class="hint" id="sensitivityMeta"></span></div><div class="stats"><div><small>${r6 ? 'GAME eDPI' : 'eDPI'}</small><b id="edpi">—</b></div><div><small>${r6 ? 'MEDIDA NO JOGO' : 'ESCALA ANGULAR'}</small><b id="yawStat">—</b></div><div><small>REFERÊNCIA</small><b>${r6 ? 'Hipfire' : '360°'}</b></div></div></div>${r6 ? `<div class="notice">O multiplier modifica a entrada; ele não é, por si só, a escala angular em graus. A V4 remove a distância absoluta não validada da V3. Informe uma medida real de 360° para usar R6 nas comparações físicas.</div><p class="hint" style="margin-top:14px">Referência: <a href="https://www.ubisoft.com/en-gb/game/rainbow-six/siege/news-updates/6kY6b5JByBY3P6vQWWinla/fov-and-input-sensitivity" target="_blank" rel="noopener">Ubisoft — FOV and Input Sensitivity ↗</a></p>` : `<div class="under-preview"><div class="eyebrow">FAIXA DE TESTE / ADVISOR</div><h2 id="adviceRange">—</h2><p class="notice" id="adviceText"></p></div>`}<div class="under-preview actions"><a class="button primary" href="sensi.html">Iniciar calibração ↗</a><a class="button ghost" href="sensi.html?mode=convert">Converter entre jogos</a></div></section><aside class="control-panel"><div class="control-title"><h3>Seu setup</h3><span>HIPFIRE</span></div>${number('dpi', 'DPI do mouse', saved.dpi || 800, 1, 1)}${number('sens', 'Sensibilidade ' + (r6 ? 'horizontal' : 'no jogo'), saved.sens || (r6 ? 10 : page === 'cs2' ? 0.8 : 0.2514), r6 ? 1 : 0.000001, r6 ? 1 : 'any')}${page === 'cs2' ? number('yaw','m_yaw do seu CS2',saved.yaw || 0.022,0.000001,'any','Padrão 0.022. Use o valor real do console se sua configuração o alterou.') : ''}${
+        r6
+          ? number(
+              'mult',
+              'MouseSensitivityMultiplierUnit',
+              saved.mult || 0.02,
+              0.000001,
+              'any',
+              'Use o valor do seu GameSettings.ini.',
+            ) +
+            number(
+              'measuredCm',
+              'Distância medida · cm/360°',
+              saved.measuredCm || '',
+              0.000001,
+              'any',
+              'Opcional. Meça a distância do mouse para um giro completo no jogo.',
+            )
+          : details(
+              'Objetivo do teste',
+              select('goal', 'Prioridade', 'balanced', [
+                ['balanced', 'Aim geral'],
+                ['recoil', 'Recoil / microajuste'],
+                ['flick', 'Flick'],
+                ['tracking', 'Tracking'],
+              ]) +
+                select('aimStyle', 'Movimento', 'hybrid', [
+                  ['hybrid', 'Braço + pulso'],
+                  ['arm', 'Braço'],
+                  ['wrist', 'Pulso'],
+                ]) +
+                select('pad', 'Mousepad útil', 'medium', [
+                  ['small', 'Pequeno · menos de 30 cm'],
+                  ['medium', 'Médio · 30–39 cm'],
+                  ['large', 'Grande · 40+ cm'],
+                ]),
+            )
+      }<p class="hint error" id="sensError" role="status"></p><div class="divider"></div><button class="small" id="saveSensitivity">Salvar setup</button></aside></div>`,
+  );
+  if(r6) ['dpi','sens','mult'].forEach(id => $(id).addEventListener('input',()=>{ $('measuredCm').value=''; }));
+  const update = () => {
+    const valid = positive(r6 ? ['dpi', 'sens', 'mult'] : page === 'cs2' ? ['dpi','sens','yaw'] : ['dpi','sens']) && (!r6 || (+$('sens').value <= 100 && Number.isInteger(+$('sens').value) && ($('measuredCm').value === '' || (Number.isFinite(+$('measuredCm').value) && +$('measuredCm').value > 0))));
+    $('saveSensitivity').disabled = !valid;
+    $('sensError').textContent = valid ? '' : 'Informe valores maiores que zero.';
+    if (!valid) {
+      ['distance', 'edpi', 'yawStat'].forEach((id) => ($(id).textContent = '—'));
+      if (!r6) $('adviceRange').textContent = '—';
+      return;
+    }
+    const dpi = +$('dpi').value,
+      s = +$('sens').value;
+    $('edpi').textContent = fmt(dpi * s, 0);
+    if (r6) {
+      $('distance').textContent = fmt(s * +$('mult').value, 4);
+      const measured = +$('measuredCm').value;
+      $('yawStat').textContent = measured > 0 ? fmt(measured) + ' cm' : 'Não informada';
+      $('sensitivityMeta').textContent = 'sens horizontal × multiplier';
+    } else {
+      const yaw = page === 'cs2' ? +$('yaw').value : GAME[page].yaw;
+      const cm = cm360(dpi, s, yaw);
+      $('distance').innerHTML = fmt(cm) + ' <span>cm / 360°</span>';
+      $('yawStat').textContent = yaw;
+      $('sensitivityMeta').textContent = 'Uma referência física, sem aceleração de mouse.';
+      const range = adviceRange(page, $('goal').value, $('aimStyle').value, $('pad').value);
+      $('adviceRange').textContent =
+        fmt(sensForCm(range[1], dpi, yaw), 4) +
+        ' – ' +
+        fmt(sensForCm(range[0], dpi, yaw), 4) +
+        ' sens';
+      $('adviceText').textContent =
+        `${range[0]}–${range[1]} cm/360°. ${cm < range[0] ? 'Seu ajuste é mais rápido que esta faixa.' : cm > range[1] ? 'Seu ajuste é mais lento que esta faixa.' : 'Seu ajuste está nesta faixa.'} Faixa heurística herdada do Advisor: teste mudanças pequenas; não é uma sensibilidade ideal universal.`;
+    }
+  };
+  bindInputs(update);
+  $('saveSensitivity').onclick = () => {
+    if (
+      !$('saveSensitivity').disabled &&
+      storageWrite('voidcore_' + page + '_sensitivity_v4', captureFields())
+    )
+      notify('Setup salvo neste navegador.');
+  };
+}
+function adviceRange(game, goal, style = 'hybrid', pad = 'medium') {
+  let a = (
+    game === 'cs2'
+      ? { balanced: [27, 45], recoil: [32, 52], flick: [22, 38], tracking: [27, 46] }
+      : { balanced: [25, 45], recoil: [30, 50], flick: [20, 38], tracking: [25, 45] }
+  )[goal].slice();
+  if (game === 'cs2') {
+    if (style === 'arm') {
+      a[0] += 3;
+      a[1] += 5;
+    }
+    if (style === 'wrist') {
+      a[0] = Math.max(16, a[0] - 5);
+      a[1] -= 5;
+    }
+    if (pad === 'small') {
+      a[0] = Math.max(16, a[0] - 6);
+      a[1] = Math.min(a[1], 36);
+    }
+    if (pad === 'large' && style !== 'wrist') a[1] += 3;
+  }
+  return a;
+}
+function vmCode(values) {
+  const s = values || storageRead('voidcore_cs2_viewmodel_v4', {vmFov:68,vmX:2.5,vmY:0,vmZ:-1.5});
+  for (const [id,min,max] of [['vmFov',54,68],['vmX',-2.5,2.5],['vmY',-2,2],['vmZ',-2,2]]) {
+    if (s[id] === '' || !Number.isFinite(Number(s[id])) || Number(s[id]) < min || Number(s[id]) > max) throw Error('Viewmodel salvo inválido: '+id);
+  }
+  return `viewmodel_presetpos 0; viewmodel_fov ${Number(s.vmFov)}; viewmodel_offset_x ${Number(s.vmX).toFixed(1)}; viewmodel_offset_y ${Number(s.vmY).toFixed(1)}; viewmodel_offset_z ${Number(s.vmZ).toFixed(1)};`;
+}
+function viewmodel() {
+  shell(
+    pageHead(
+      'COUNTER-STRIKE 2 / VIEWMODEL',
+      'Abra espaço para o jogo.',
+      'Explore FOV e offsets em um estudo de enquadramento limpo.',
+    ) +
+      tabs() +
+      `<div class="workspace studio"><section>${preview('vm')}<div class="under-preview"><div class="section-heading"><h3>Pontos de partida</h3><span>VIEWMODEL</span></div><div class="presets">${[
+        ['classic', 'Clássico'],
+        ['wide', 'Aberto'],
+        ['compact', 'Compacto'],
+        ['center', 'Central'],
+      ]
+        .map(([k, l]) => `<button data-vm="${k}">${l}</button>`)
+        .join(
+          '',
+        )}</div><div class="notice">FOV aqui é o do viewmodel, não o do mundo. Mãos, proporção e rifle são referências visuais; os comandos exportam apenas FOV e offsets.</div><pre class="codebox" id="vmCode"></pre><div class="actions"><button id="copyVM">Copiar comandos</button><button id="exportVM" class="ghost">Exportar .cfg</button></div></div></section><aside class="control-panel"><div class="control-title"><h3>Enquadramento</h3><span>CS2</span></div>${range('vmFov', 'FOV · 54 menor / 68 maior', 68, 54, 68)}${range('vmX', 'X · esquerda / direita', 2.5, -2.5, 2.5, 0.1)}${range('vmY', 'Y · profundidade', 0, -2, 2, 0.1)}${range('vmZ', 'Z · baixo / cima', -1.5, -2, 2, 0.1)}${details(
+        'Referências de tela',
+        select('vmAspect', 'Aspecto', '16-9', [
+          ['16-9', '16:9'],
+          ['16-10', '16:10'],
+          ['4-3-stretched', '4:3 stretched'],
+          ['4-3-bars', '4:3 black bars'],
+          ['5-4-stretched', '5:4 stretched'],
+        ]) +
+          select('vmHand', 'Mão visual', 'right', [
+            ['right', 'Direita'],
+            ['left', 'Esquerda'],
+          ]) +
+          select('scene', 'Cenário', 'dark', [
+            ['dark', 'Estúdio · noite'],
+            ['dust', 'Estúdio · luz quente'],
+            ['mirage', 'Estúdio · luz fria'],
+            ['inferno', 'Estúdio · natural'],
+          ]),
+      )}${localControls('Salve para incluir no autoexec.')}</aside></div>`,
+  );
+  const update = () => {
+    outputs();
+    const f = +$('vmFov').value,
+      x = +$('vmX').value,
+      y = +$('vmY').value,
+      z = +$('vmZ').value,
+      hand = $('vmHand').value === 'left' ? -1 : 1;
+    const aspect = $('vmAspect').value;
+    const stretch = aspect === '5-4-stretched' ? (16/9)/(5/4) : aspect === '4-3-stretched' ? (16/9)/(4/3) : 1;
+    const scale = Math.tan(68 * Math.PI / 360) / Math.tan(f * Math.PI / 360);
+    const w=$('preview').clientWidth, h=$('preview').clientHeight;
+    $('model').style.left='0%';
+    $('model').style.transform =
+      `translate(${hand * x * w * 0.022}px,${-z * h * 0.022 + y * h * 0.006}px) scale(${hand * stretch * scale * (1 - y * 0.035)},${scale * (1 - y * 0.035)})`;
+    $('preview').classList.toggle('black-bars', aspect === '4-3-bars');
+    $('preview').dataset.scene = $('scene').value;
+    $('resolutionLabel').textContent = aspect.replaceAll('-', ':');
+    $('stateLabel').textContent = 'FOV '+f+'°';
+    $('vmCode').textContent = vmCode(captureFields());
+  };
+  bindInputs(update);
+  new ResizeObserver(update).observe($('preview'));
+  presetStorage('voidcore_cs2_viewmodel_v4', update);
+  document.querySelectorAll('[data-vm]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        const p = {
+          classic: [68, 2.5, 0, -1.5],
+          wide: [68, 2.5, 2, -2],
+          compact: [60, 1.4, -1, -1.8],
+          center: [62, 0.2, -0.5, -1],
+        }[b.dataset.vm];
+        applyFields(Object.fromEntries(['vmFov', 'vmX', 'vmY', 'vmZ'].map((id, i) => [id, p[i]])));
+        update();
+      }),
+  );
+  $('copyVM').onclick = () => copyText($('vmCode').textContent);
+  $('exportVM').onclick = () => download('voidcore-viewmodel.cfg', $('vmCode').textContent);
+}
+function configs() {
+  if (page === 'valorant') return valConfigs();
+  const sens = storageRead('voidcore_cs2_sensitivity_v4', { sens: 0.8 });
+  shell(
+    pageHead(
+      'COUNTER-STRIKE 2 / CONFIGS',
+      'Seu ajuste. Pronto para usar.',
+      'Gere um autoexec enxuto com os valores salvos no workspace.',
+    ) +
+      tabs() +
+      `<div class="workspace"><section><div class="canvas-panel"><div class="panel-bar"><h3>autoexec.cfg</h3><small>GENERATED / CS2</small></div><div style="padding:22px"><pre class="codebox" id="configCode"></pre><div class="actions"><button class="primary" id="downloadConfig">Baixar .cfg ↓</button><button class="ghost" id="copyConfig">Copiar conteúdo</button></div><p class="hint" style="margin-top:18px">Coloque o arquivo na pasta game/csgo/cfg. Execute com <code>exec autoexec</code> no console.</p></div></div><div class="notice">Sensibilidade salva: ${esc(sens.sens)}. O viewmodel usa seu preset salvo ou o preset clássico. Revise o conteúdo antes de aplicar.</div>${details(
+        'Performance Advisor · orientações de teste',
+        select('perfGpu', 'GPU', 'mid', [
+          ['low', 'Entrada / antiga'],
+          ['mid', 'Intermediária'],
+          ['high', 'Alta'],
+        ]) +
+          select('perfCpu', 'CPU', 'modern', [
+            ['old', '6c/6t ou similar'],
+            ['modern', '6c/12t+ moderna'],
+            ['high', 'High-end'],
+          ]) +
+          select('perfHz', 'Monitor · Hz', '180', [
+            ['60', '60'],
+            ['144', '144'],
+            ['180', '180'],
+            ['240', '240'],
+            ['360', '360'],
+          ]) +
+          select('perfGoal', 'Prioridade', 'fps', [
+            ['fps', 'FPS / competitivo'],
+            ['balanced', 'Equilibrado'],
+            ['quality', 'Qualidade'],
+          ]) +
+          '<p class="notice" id="perfAdvice"></p>',
+      )}</section><aside class="control-panel"><div class="control-title"><h3>Autoexec</h3><span>.CFG</span></div>${number('aeFps', 'FPS máximo · 0 ilimitado', 300, 0, 1)}${number('aeFpsUi', 'FPS no menu', 120, 0, 1)}${select(
+        'aeConsole',
+        'Tecla do console',
+        'F10',
+        [
+          ['F10', 'F10'],
+          ['F11', 'F11'],
+          ['F12', 'F12'],
+        ],
+      )}${check('aeSens', 'Incluir sensibilidade salva', true)}${check('aeVm', 'Incluir viewmodel salvo', true)}${check('aeCross', 'Incluir mira salva', true)}${details(
+        'Adicionar um bind',
+        check('includeBind', 'Incluir bind') +
+          field('bindKey', 'Tecla', 'text', 'j') +
+          select('bindAction', 'Ação', '+jump', [
+            ['+jump', 'Pular'],
+            ['slot1', 'Arma primária'],
+            ['slot2', 'Pistola'],
+            ['slot3', 'Faca'],
+            ['lastinv', 'Última arma'],
+            ['drop', 'Dropar arma'],
+            ['+use', 'Usar'],
+            ['buymenu', 'Menu de compra'],
+            ['player_ping', 'Ping'],
+            ['toggleconsole', 'Console'],
+          ]),
+      )}<p id="configError" class="hint error" role="status"></p></aside></div>`,
+  );
+  const update = () => {
+    let valid = true;
+    ['aeFps', 'aeFpsUi'].forEach((id) => {
+      const e = $(id);
+      const ok = e.value !== '' && Number.isInteger(+e.value) && +e.value >= 0;
+      e.setAttribute('aria-invalid', !ok);
+      valid &&= ok;
+    });
+    const key = $('bindKey').value.trim();
+    if ($('includeBind').checked && !/^[a-z0-9_+-]{1,12}$/i.test(key)) valid = false;
+    $('configError').textContent = valid ? '' : 'Informe FPS inteiro ≥ 0 e uma tecla válida.';
+    let lines = [
+      '// VØIDCORE V4 — CS2 autoexec',
+      `fps_max ${$('aeFps').value}`,
+      `fps_max_ui ${$('aeFpsUi').value}`,
+      `bind "${$('aeConsole').value}" "toggleconsole"`,
+    ];
+    try {
+      if ($('aeSens').checked) {
+        if (!Number.isFinite(Number(sens.sens)) || Number(sens.sens) <= 0) throw Error('Sensibilidade salva inválida.');
+        lines.push(`sensitivity ${Number(sens.sens)}`);
+        if(sens.yaw !== undefined) { if(!Number.isFinite(Number(sens.yaw))||Number(sens.yaw)<=0) throw Error('m_yaw salvo inválido.'); lines.push(`m_yaw ${Number(sens.yaw)}`); }
+      }
+      if ($('aeVm').checked) lines.push(vmCode().replaceAll('; ', ';\n'));
+      const cross = storageRead('voidcore_cs2_crosshair_v4', null);
+      if ($('aeCross').checked && cross) lines.push(csCommands(cross).replaceAll('; ', ';\n'));
+    } catch (err) { valid = false; $('configError').textContent = err.message + ' Repare o preset no editor ou desative sua inclusão.'; }
+    if ($('includeBind').checked) lines.push(`bind "${key}" "${$('bindAction').value}"`);
+    lines.push('echo "VØIDCORE autoexec loaded"');
+    $('configCode').textContent = valid
+      ? lines.join('\n')
+      : 'Corrija os valores para gerar o arquivo.';
+    $('downloadConfig').disabled = $('copyConfig').disabled = !valid;
+    const hz = +$('perfHz').value,
+      goal = $('perfGoal').value,
+      cpu = $('perfCpu').value,
+      gpu = $('perfGpu').value;
+    let cap =
+      cpu === 'old'
+        ? Math.max(180, Math.round((hz * 1.35) / 10) * 10)
+        : Math.round((hz * 1.7) / 10) * 10;
+    if (goal === 'quality') cap = Math.max(hz, Math.round((hz * 1.15) / 10) * 10);
+    if (gpu === 'low') cap = Math.min(cap, 240);
+    $('perfAdvice').textContent =
+      `Cap de teste herdado do Advisor: ${cap} FPS. É uma heurística, não um benchmark. Compare estabilidade de frametime no seu computador. ` +
+      (goal === 'fps'
+        ? 'Preserve sombras úteis para leitura e reduza efeitos que custem FPS.'
+        : 'Ajuste qualidade mantendo folga acima da taxa do monitor.') +
+      (cpu === 'old' ? ' Feche processos em segundo plano antes de reduzir resolução.' : '') +
+      (gpu === 'low' ? ' Teste reduzir MSAA se a GPU ficar perto de 100%.' : '');
+  };
+  bindInputs(update);
+  $('downloadConfig').onclick = () => download('autoexec.cfg', $('configCode').textContent);
+  $('copyConfig').onclick = () => copyText($('configCode').textContent);
+}
+function valConfigs() {
+  shell(
+    pageHead(
+      'VALORANT / CONFIGS',
+      'Sua biblioteca de miras.',
+      'Perfis salvos no navegador, prontos para copiar e aplicar.',
+    ) +
+      tabs() +
+      `<div class="canvas-panel"><div class="panel-bar"><h3>Perfis locais</h3><a class="button small primary" href="valorant.html">Abrir Crosshair ↗</a></div><div style="padding:24px"><div id="valLibrary" class="saved-list"></div><p class="hint" style="margin-top:22px">Salve um preset no editor para adicioná-lo à biblioteca. Perfis da V3 continuam disponíveis neste navegador.</p></div></div>`,
+  );
+  let arr = storageRead('voidcore_val_presets', []);
+  if (!Array.isArray(arr)) arr = [];
+  const current = storageRead('voidcore_val_crosshair_v4', null);
+  if (current) arr.unshift({ name: 'Workspace V4 · último preset', fields: current });
+  const host = $('valLibrary');
+  if (!arr.length) {
+    host.innerHTML =
+      '<div class="measure-stage"><div class="eyebrow">NENHUM PERFIL AINDA</div><h2>Sua próxima mira começa no editor.</h2><a class="button" href="valorant.html">Configurar mira ↗</a></div>';
+    return;
+  }
+  arr.filter(item=>item && typeof item === 'object').forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    const label = document.createElement('span');
+    label.textContent = item.name || 'Preset ' + (i + 1);
+    const button = document.createElement('button');
+    button.className = 'small';
+    button.textContent = item.fields ? 'Abrir no editor' : 'Copiar código';
+    button.onclick = () => {
+      if (item.fields) location.href = 'valorant.html?load=1';
+      else if (typeof item.code === 'string') copyText(item.code);
+      else notify('Este perfil não tem um código válido.');
+    };
+    div.append(label, button);
+    if (typeof item.code === 'string') {
+      const edit = document.createElement('a'); edit.className='button small ghost'; edit.textContent='Editar'; edit.href='valorant.html#code='+encodeURIComponent(item.code); div.append(edit);
+    }
+    host.append(div);
+  });
+}
+let hubMode = ['convert', 'compare'].includes(query.get('mode')) ? query.get('mode') : 'calibrate';
+let wizardStep = 1,
+  finder = { lo: null, hi: null, mid: null, trials: 0 },
+  hubSetup = { game: 'cs2', dpi: 800, sens: 0.8, yaw:0.022, goal: 'balanced' },
+  hubDraft = {};
+function hubTabs() {
+  return `<nav class="tabs" aria-label="Intenção do Sensi Hub">${[
+    ['calibrate', 'Calibrar'],
+    ['convert', 'Converter'],
+    ['compare', 'Comparar'],
+  ]
+    .map(
+      ([m, l]) =>
+        `<a href="sensi.html${m === 'calibrate' ? '' : '?mode=' + m}" class="${hubMode === m ? 'active' : ''}" ${hubMode === m ? 'aria-current="page"' : ''}>${l}</a>`,
+    )
+    .join('')}</nav>`;
+}
+function sensi() {
+  shell(
+    pageHead(
+      'SENSI HUB / CALIBRATION',
+      'Encontre seu ponto de controle.',
+      'Uma intenção por vez. Meça, teste e refine com consistência.',
+    ) +
+      hubTabs() +
+      '<div id="hubContent"></div>',
+  );
+  const session=storageRead('voidcore_calibration_v4',null);
+  if(session && [1,2,3].includes(session.wizardStep) && ['cs2','valorant'].includes(session.hubSetup?.game) && Number.isFinite(session.hubSetup.dpi) && session.hubSetup.dpi>0 && Number.isFinite(session.hubSetup.sens) && session.hubSetup.sens>0 && Number.isFinite(session.finder?.mid) && session.finder.mid>0 && Number.isFinite(session.finder.lo) && session.finder.lo>0 && Number.isFinite(session.finder.hi) && session.finder.hi>=session.finder.lo) { wizardStep=session.wizardStep; finder=session.finder; hubSetup=session.hubSetup; }
+  if (hubMode === 'calibrate') renderWizard();
+  else if (hubMode === 'convert') renderConverter();
+  else renderCompare();
+}
+function saveCalibration() { storageWrite('voidcore_calibration_v4',{wizardStep,finder,hubSetup}); }
+function renderWizard() {
+  saveCalibration();
+  const host = $('hubContent');
+  host.innerHTML = `<section class="wizard"><div class="wizard-progress" aria-label="Etapa da calibração">${['Seu setup', 'Teste no jogo', 'Seu resultado'].map((s, i) => `<span class="${wizardStep === i + 1 ? 'active' : ''}" ${wizardStep === i + 1 ? 'aria-current="step"' : ''}><b>${i + 1}</b>${s}</span>`).join('')}</div><div id="wizardBody"></div></section>`;
+  const body = $('wizardBody');
+  if (wizardStep === 1) {
+    body.innerHTML = `<div class="wizard-heading"><h2>Comece de um ajuste conhecido.</h2><p>Use a sensibilidade atual como ponto de partida. O teste refina uma faixa a partir da sua percepção.</p></div><div class="canvas-panel" style="padding:24px"><div class="wizard-form">${select('sfGame', 'Jogo', hubSetup.game, gameOptions.slice(0, 2))}${number('sfDpi', 'DPI do mouse', hubSetup.dpi, 1, 1)}${number('sfStart', 'Sensibilidade atual', hubSetup.sens)}${number('sfYaw','CS2 · m_yaw',hubSetup.yaw || 0.022)}${select(
+      'sfGoal',
+      'Prioridade do teste',
+      hubSetup.goal,
+      [
+        ['balanced', 'Aim geral'],
+        ['recoil', 'Recoil / microajuste'],
+        ['flick', 'Flick'],
+        ['tracking', 'Tracking'],
+      ],
+    )}<p id="wizardError" class="error hint" role="status"></p><div class="step-actions"><span class="hint">Prepare um mapa de treino.</span><button class="primary" id="startCalibration">Começar teste →</button></div></div></div>`;
+    show('sfYawRow',$('sfGame').value === 'cs2');
+    $('sfGame').onchange = () => {
+      show('sfYawRow',$('sfGame').value === 'cs2');
+      $('sfStart').value = $('sfGame').value === 'cs2' ? 0.8 : 0.2514;
+    };
+    $('startCalibration').onclick = () => {
+      if (!positive($('sfGame').value === 'cs2' ? ['sfDpi','sfStart','sfYaw'] : ['sfDpi','sfStart'])) {
+        $('wizardError').textContent = 'Informe DPI e sensibilidade maiores que zero.';
+        return;
+      }
+      hubSetup = {
+        game: $('sfGame').value,
+        dpi: +$('sfDpi').value,
+        sens: +$('sfStart').value,
+        yaw: $('sfGame').value === 'cs2' ? +$('sfYaw').value : 0.07,
+        goal: $('sfGoal').value,
+      };
+      finder = {
+        lo: hubSetup.sens * 0.55,
+        hi: hubSetup.sens * 1.45,
+        mid: hubSetup.sens,
+        trials: 0,
+      };
+      wizardStep = 2;
+      renderWizard();
+    };
+  } else if (wizardStep === 2) {
+    body.innerHTML = `<div class="wizard-heading"><h2>Teste. Sinta. Refine.</h2><p>Faça a mesma sequência de microajustes, tracking e giros a cada tentativa. Responda depois de testar no jogo.</p></div><div class="canvas-panel"><div class="panel-bar"><h3>${GAME[hubSetup.game].name} · ${hubSetup.dpi} DPI</h3><small>CALIBRAÇÃO GUIADA</small></div><div class="measure-stage"><span class="measure-label">TESTE ESTA SENSIBILIDADE</span><div class="measure" id="trialValue"></div><span class="hint" id="trialRange"></span><div class="ruler" aria-hidden="true"></div><p class="hint" id="trialDistance"></p></div><div style="padding:24px"><p class="calibrate-instructions">Teste por alguns minutos. Sua mira ultrapassa o alvo ou exige deslocamento demais?</p><div class="actions trial-controls"><button data-choice="slow">Muito lenta</button><button class="primary" data-choice="good">Boa para mim</button><button data-choice="fast">Muito rápida</button></div><p class="trial-count" id="trialCount"></p><div class="step-actions"><button class="ghost" id="restartCalibration">Reiniciar</button><button id="finishCalibration">Ver resultado →</button></div></div></div>`;
+    const updateTrial = () => {
+      $('trialValue').innerHTML = fmt(finder.mid, GAME[hubSetup.game].dec) + ' <span>sens</span>';
+      $('trialRange').textContent = `Faixa: ${fmt(finder.lo, 4)} – ${fmt(finder.hi, 4)}`;
+      $('trialDistance').textContent =
+        fmt(cm360(hubSetup.dpi, finder.mid, hubSetup.yaw || GAME[hubSetup.game].yaw)) + ' cm/360°';
+      $('trialCount').textContent =
+        finder.trials +
+        ' RESPOSTAS / ' +
+        (finder.trials ? 'CONTINUE ATÉ SENTIR CONSISTÊNCIA' : 'TESTE PRIMEIRO O VALOR CENTRAL');
+      $('finishCalibration').disabled = finder.trials === 0;
+    };
+    document.querySelectorAll('[data-choice]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          const kind = b.dataset.choice;
+          if (kind === 'slow') finder.lo = finder.mid;
+          else if (kind === 'fast') finder.hi = finder.mid;
+          else {
+            finder.lo = finder.mid * 0.94;
+            finder.hi = finder.mid * 1.06;
+          }
+          finder.mid = (finder.lo + finder.hi) / 2;
+          finder.trials++;
+          saveCalibration();
+          updateTrial();
+        }),
+    );
+    $('restartCalibration').onclick = () => {
+      wizardStep = 1;
+      renderWizard();
+    };
+    $('finishCalibration').onclick = () => {
+      wizardStep = 3;
+      renderWizard();
+    };
+    updateTrial();
+  } else {
+    const cm = cm360(hubSetup.dpi, finder.mid, hubSetup.yaw || GAME[hubSetup.game].yaw);
+    body.innerHTML = `<div class="wizard-heading"><h2>Um ponto de partida seu.</h2><p>Este resultado resume o teste. Confirme em sessões diferentes antes de adotar uma mudança permanente.</p></div><div class="canvas-panel"><div class="measure-stage"><span class="measure-label">${GAME[hubSetup.game].name} / ${hubSetup.dpi} DPI</span><div class="measure">${fmt(finder.mid, 4)} <span>sens</span></div><span class="hint">Faixa refinada: ${fmt(finder.lo, 4)} – ${fmt(finder.hi, 4)}</span><div class="ruler" aria-hidden="true"></div></div><div class="stats"><div><small>DISTÂNCIA</small><b>${fmt(cm)} cm</b></div><div><small>RESPOSTAS</small><b>${finder.trials}</b></div><div><small>VARIAÇÃO INICIAL</small><b>${fmt((finder.mid / hubSetup.sens - 1) * 100, 1)}%</b></div></div><div style="padding:24px"><p class="notice">A faixa é iterativa e baseada na sua percepção. As sugestões do Advisor são heurísticas; mantenha o DPI e o setup iguais durante o teste.</p><div class="step-actions"><button class="ghost" id="backTrial">Continuar teste</button><div class="actions"><button id="copyResult">Copiar resultado</button><button class="primary" id="saveResult">Salvar setup</button></div></div></div></div>`;
+    $('backTrial').onclick = () => {
+      wizardStep = 2;
+      renderWizard();
+    };
+    $('copyResult').onclick = () =>
+      copyText(
+        `${GAME[hubSetup.game].name} | ${hubSetup.dpi} DPI | sens ${fmt(finder.mid, 4)} | ${fmt(cm)} cm/360° | faixa ${fmt(finder.lo, 4)}–${fmt(finder.hi, 4)}`,
+      );
+    $('saveResult').onclick = () => {
+      if (
+        storageWrite('voidcore_' + hubSetup.game + '_sensitivity_v4', {
+          dpi: hubSetup.dpi,
+          sens: finder.mid,
+          ...(hubSetup.game === 'cs2' ? {yaw:hubSetup.yaw || 0.022} : {}),
+        })
+      )
+        notify('Resultado salvo no workspace ' + GAME[hubSetup.game].name + '.');
+    };
+  }
+}
+function shareFields(fields) {
+  fields = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== ''));
+  const bytes = new TextEncoder().encode(JSON.stringify({ version: 4, mode: hubMode, fields }));
+  const raw = btoa(String.fromCharCode(...bytes))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');
+  copyText(location.href.split('#')[0] + '#preset=' + raw);
+}
+function loadShared() {
+  if (!location.hash.startsWith('#preset=')) return;
+  try {
+    const raw = location.hash.slice(8);
+    if (raw.length > 10000) throw Error('Link muito grande.');
+    const str = atob(raw.replaceAll('-', '+').replaceAll('_', '/'));
+    const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(str, (c) => c.charCodeAt(0))));
+    if (data.version === 4) {
+      if (data.mode !== hubMode) {
+        const url = new URL(location.href);
+        url.searchParams.set('mode', data.mode);
+        if (!['compare', 'convert'].includes(data.mode)) throw Error('Modo desconhecido.');
+        location.replace(url.href);
+        return;
+      }
+      applyFields(data.fields);
+    } else {
+      const map = {
+        fromGame: 'fromGame',
+        toGame: 'toGame',
+        convDpi: 'convDpi',
+        convDpiTo: 'convDpiTo',
+        convSens: 'convSens',
+      };
+      const fields = {};
+      Object.keys(map).forEach((k) => {
+        if (data[k] !== undefined) fields[map[k]] = data[k];
+      });
+      applyFields(fields);
+    }
+    notify('Valores do link carregados.');
+  } catch {
+    notify('Não foi possível ler este preset compartilhado.');
+  }
+}
+function renderConverter() {
+  const r6 = storageRead('voidcore_r6_sensitivity_v4', {});
+  $('hubContent').innerHTML =
+    `<div class="workspace"><section><div class="canvas-panel"><div class="panel-bar"><h3>Seu ajuste no destino</h3><small>MESMA DISTÂNCIA / HIPFIRE</small></div><div class="measure-stage"><span class="measure-label" id="targetGame">VALORANT</span><div class="measure" id="convResult">—</div><span class="hint" id="convMeta"></span><div class="ruler" aria-hidden="true"></div></div><div class="stats"><div><small>cm/360°</small><b id="convCm">—</b></div><div><small>ORIGEM / eDPI</small><b id="convEdpiFrom">—</b></div><div><small>DESTINO / eDPI</small><b id="convEdpiTo">—</b></div></div></div><div class="notice">Preserva a distância física de um giro completo. FOV, zoom e ADS podem produzir percepções diferentes mesmo com o mesmo cm/360°.</div><div class="under-preview actions"><button id="copyConversion" class="primary">Copiar conversão</button><button id="shareConversion" class="ghost">Copiar link</button><button id="saveConversion">Salvar no destino</button></div>${details('Como calculamos', '<p class="hint">CS2: yaw 0.022. VALORANT: yaw 0.07, como no Hub original.</p><pre class="codebox">cm/360 = 914.4 / (DPI × sens × yaw)\nsens destino = 914.4 / (cm/360 × DPI destino × yaw destino)</pre><p class="hint">R6 usa uma medida física informada para calibrar a referência. O multiplier precisa permanecer igual durante a conversão.</p>')}</section><aside class="control-panel"><div class="control-title"><h3>1. Sua origem</h3><span>CONVERSÃO</span></div>${select('fromGame', 'Jogo atual', 'cs2', gameOptions)}${number('convDpi', 'DPI atual', 800, 1, 1)}${number('convSens', 'Sensibilidade atual', 0.8)}${number('sourceYaw','CS2 · m_yaw de origem',0.022)}${number('sourceCm', 'R6 · cm/360° medidos', r6.measuredCm || '')}<div class="divider"></div><div class="control-title"><h3>2. Seu destino</h3></div>${select('toGame', 'Jogo de destino', 'valorant', gameOptions)}${number('convDpiTo', 'DPI de destino', 800, 1, 1)}${number('targetYaw','CS2 · m_yaw de destino',0.022)}<div id="r6Reference">${number('r6Dpi', 'R6 · DPI da referência', r6.dpi || 800, 1, 1)}${number('r6Sens', 'R6 · sens da referência', r6.sens || 10, 1, 1)}${number('r6Cm', 'R6 · cm/360° da referência', r6.measuredCm || '')}<p class="hint">Use uma medição feita com esses valores e mantenha o multiplier. O resultado pode exigir arredondamento no jogo.</p></div><p class="save-status error" id="convError" role="status"></p></aside></div>`;
+  const initialDraft = storageRead('voidcore_converter_draft_v4', null);
+  if (initialDraft) { try { applyFields(initialDraft); } catch {} }
+  const update = () => {
+    const from = $('fromGame').value,
+      to = $('toGame').value;
+    show('sourceCmRow', from === 'r6');
+    show('sourceYawRow', from === 'cs2'); show('targetYawRow', to === 'cs2');
+    show('r6Reference', to === 'r6');
+    let ids = ['convDpi', 'convSens', 'convDpiTo'];
+    if (from === 'r6') ids.push('sourceCm');
+    if (from === 'cs2') ids.push('sourceYaw'); if(to === 'cs2') ids.push('targetYaw');
+    if (to === 'r6') ids.push('r6Dpi', 'r6Sens', 'r6Cm');
+    $('targetGame').textContent = GAME[to].name;
+    const valid = positive(ids);
+    $('copyConversion').disabled = $('shareConversion').disabled = $('saveConversion').disabled = !valid;
+    if (!valid) {
+      ['convResult', 'convCm', 'convEdpiFrom', 'convEdpiTo'].forEach(
+        (id) => ($(id).textContent = '—'),
+      );
+      $('convMeta').textContent = '';
+      $('convError').textContent =
+        'Preencha os valores positivos e as medidas de R6 quando necessárias.';
+      return;
+    }
+    $('convError').textContent = '';
+    const dpi = +$('convDpi').value,
+      s = +$('convSens').value,
+      destDpi = +$('convDpiTo').value;
+    const cm = from === 'r6' ? +$('sourceCm').value : cm360(dpi, s, from === 'cs2' ? +$('sourceYaw').value : GAME[from].yaw);
+    const out =
+      to === 'r6'
+        ? (+$('r6Sens').value * +$('r6Dpi').value * +$('r6Cm').value) / (destDpi * cm)
+        : sensForCm(cm, destDpi, to === 'cs2' ? +$('targetYaw').value : GAME[to].yaw);
+    $('convResult').innerHTML = fmt(out, 4) + ' <span>sens</span>';
+    $('convCm').textContent = fmt(cm) + ' cm';
+    $('convEdpiFrom').textContent = fmt(dpi * s, 0);
+    $('convEdpiTo').textContent = fmt(destDpi * out, 0);
+    $('convMeta').textContent = `${GAME[from].name} ${s} @ ${dpi} DPI → ${GAME[to].name} @ ${destDpi} DPI`;
+    if(to === 'r6') {
+      const rounded=Math.round(out);
+      $('saveConversion').disabled = rounded < 1 || rounded > 100;
+      $('convMeta').textContent += rounded >= 1 && rounded <= 100 ? ` · Slider ${rounded}: ${fmt(cm*out/rounded)} cm/360° (estimado)` : ' · Fora do slider 1–100: ajuste o multiplier e meça novamente.';
+    }
+    hubDraft = { from, to, dpi, s, destDpi, cm, out };
+    storageWrite('voidcore_converter_draft_v4', Object.fromEntries(Object.entries(captureFields()).filter(([,v])=>v!=='')));
+  };
+  bindInputs(update);
+  $('fromGame').addEventListener('change', () => {
+    $('convSens').value =
+      $('fromGame').value === 'cs2' ? 0.8 : $('fromGame').value === 'valorant' ? 0.2514 : 10;
+    update();
+  });
+  $('copyConversion').onclick = () =>
+    copyText(
+      `${GAME[hubDraft.from].name} ${hubDraft.s} @ ${hubDraft.dpi} DPI → ${GAME[hubDraft.to].name} ${fmt(hubDraft.out, 4)} @ ${hubDraft.destDpi} DPI | ${fmt(hubDraft.cm)} cm/360°`,
+    );
+  $('shareConversion').onclick = () => shareFields(captureFields());
+  $('saveConversion').onclick = () => {
+    const data = {dpi:hubDraft.destDpi,sens:hubDraft.to === 'r6' ? Math.round(hubDraft.out) : hubDraft.out};
+    if(hubDraft.to === 'cs2') data.yaw = +$('targetYaw').value;
+    if (hubDraft.to === 'r6') { data.mult = r6.mult || 0.02; data.measuredCm = hubDraft.cm * hubDraft.out / data.sens; }
+    if (storageWrite('voidcore_'+hubDraft.to+'_sensitivity_v4',data)) notify('Conversão salva no workspace '+GAME[hubDraft.to].name+'.');
+  };
+  try { const draft = storageRead('voidcore_converter_draft_v4',null); if (draft) applyFields(draft); } catch {}
+  loadShared();
+  update();
+}
+function renderCompare() {
+  function side(letter, game, sens) {
+    return `<div><div class="eyebrow">SETUP ${letter}</div>${select('abGame' + letter, 'Jogo', game, gameOptions)}${number('abDpi' + letter, 'DPI', 800, 1, 1)}${number('abSens' + letter, 'Sensibilidade', sens)}${number('abYaw'+letter,'CS2 · m_yaw',0.022)}${number('abMeasured' + letter, 'R6 · cm/360° medidos', '')}</div>`;
+  }
+  $('hubContent').innerHTML =
+    `<div class="wizard"><div class="wizard-heading"><h2>Compare o movimento físico.</h2><p>Valores de eDPI de jogos diferentes não são uma referência equivalente. Compare a distância.</p></div><div class="compare-grid">${side('A', 'cs2', 0.8)}${side('B', 'valorant', 0.2514)}</div><div class="canvas-panel" style="margin-top:24px"><div class="stats"><div><small>A / cm/360°</small><b id="abCmA">—</b></div><div><small>B / cm/360°</small><b id="abCmB">—</b></div><div><small>DIFERENÇA</small><b id="abDiff">—</b></div></div><div style="padding:24px"><p id="abVerdict" class="hint" role="status"></p><div class="actions" style="margin-top:20px"><button id="abSave" class="primary">Salvar comparação</button><button id="abShare" class="ghost">Copiar link</button></div></div></div>${details('Histórico neste navegador', '<div class="saved-list" id="historyList"></div>')}</div>`;
+  const update = () => {
+    const a = $('abGameA').value,
+      b = $('abGameB').value;
+    show('abMeasuredARow', a === 'r6');
+    show('abMeasuredBRow', b === 'r6');
+    show('abYawARow', a === 'cs2'); show('abYawBRow', b === 'cs2');
+    const ids = ['abDpiA', 'abSensA', 'abDpiB', 'abSensB'];
+    if (a === 'cs2') ids.push('abYawA'); if(b === 'cs2') ids.push('abYawB');
+    if (a === 'r6') ids.push('abMeasuredA');
+    if (b === 'r6') ids.push('abMeasuredB');
+    const valid = positive(ids);
+    $('abSave').disabled = $('abShare').disabled = !valid;
+    if (!valid) {
+      ['abCmA', 'abCmB', 'abDiff'].forEach((id) => ($(id).textContent = '—'));
+      $('abVerdict').textContent =
+        'Informe valores positivos. R6 precisa de uma medida real para este setup.';
+      return;
+    }
+    const ca =
+        a === 'r6'
+          ? +$('abMeasuredA').value
+          : cm360(+$('abDpiA').value, +$('abSensA').value, a === 'cs2' ? +$('abYawA').value : GAME[a].yaw),
+      cb =
+        b === 'r6'
+          ? +$('abMeasuredB').value
+          : cm360(+$('abDpiB').value, +$('abSensB').value, b === 'cs2' ? +$('abYawB').value : GAME[b].yaw);
+    const diff = ((cb - ca) / ca) * 100;
+    $('abCmA').textContent = fmt(ca) + ' cm';
+    $('abCmB').textContent = fmt(cb) + ' cm';
+    $('abDiff').textContent = (diff >= 0 ? '+' : '') + fmt(diff, 1) + '%';
+    $('abVerdict').textContent =
+      Math.abs(diff) < 1
+        ? 'Distâncias praticamente equivalentes (diferença menor que 1%).'
+        : diff > 0
+          ? 'B exige mais deslocamento de mouse: é fisicamente mais lenta.'
+          : 'B exige menos deslocamento de mouse: é fisicamente mais rápida.';
+  };
+  bindInputs(update);
+  ['A', 'B'].forEach((letter) =>
+    $('abGame' + letter).addEventListener('change', () => {
+      const g = $('abGame' + letter).value;
+      $('abSens' + letter).value = g === 'cs2' ? 0.8 : g === 'valorant' ? 0.2514 : 10;
+      update();
+    }),
+  );
+  function history() {
+    let arr = storageRead('voidcore_sensi_history', []);
+    if (!Array.isArray(arr)) arr = [];
+    const host = $('historyList');
+    host.replaceChildren();
+    if (!arr.length) {
+      host.textContent = 'Nenhuma comparação salva ainda.';
+      host.classList.add('hint');
+      return;
+    }
+    arr.filter(item=>item && typeof item === 'object').forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'saved-item';
+      row.textContent = `${item.a?.game || 'A'} ${item.a?.sens || ''} @ ${item.a?.dpi || ''} DPI → ${item.b?.game || 'B'} ${item.b?.sens || ''} @ ${item.b?.dpi || ''} DPI`;
+      const reopen=document.createElement('button'); reopen.className='small ghost'; reopen.textContent='Reabrir';
+      reopen.onclick=()=>{ try { applyFields({abGameA:item.a.game,abDpiA:item.a.dpi,abSensA:item.a.sens,abGameB:item.b.game,abDpiB:item.b.dpi,abSensB:item.b.sens,abYawA:item.a.yaw || 0.022,abYawB:item.b.yaw || 0.022,...(item.a.measured ? {abMeasuredA:item.a.measured}:{}),...(item.b.measured ? {abMeasuredB:item.b.measured}:{})}); update(); notify('Comparação carregada.'); } catch(err) { notify(err.message); } };
+      row.append(reopen); host.append(row);
+    });
+  }
+  $('abSave').onclick = () => {
+    let arr = storageRead('voidcore_sensi_history', []);
+    if (!Array.isArray(arr)) arr = [];
+    arr.unshift({
+      at: new Date().toISOString(),
+      a: {
+        game: $('abGameA').value,
+        dpi: $('abDpiA').value,
+        sens: $('abSensA').value,
+        measured: $('abMeasuredA').value,
+        yaw: $('abYawA').value,
+      },
+      b: {
+        game: $('abGameB').value,
+        dpi: $('abDpiB').value,
+        sens: $('abSensB').value,
+        measured: $('abMeasuredB').value,
+        yaw: $('abYawB').value,
+      },
+    });
+    if (storageWrite('voidcore_sensi_history', arr.slice(0, 12))) {
+      history();
+      notify('Comparação salva · histórico de até 12 testes.');
+    }
+  };
+  $('abShare').onclick = () => shareFields(captureFields());
+  history();
+  loadShared();
+  update();
+}
+if (page === 'home') home();
+else if (page === 'sensi') sensi();
+else if (page === 'r6' || moduleName === 'sensitivity') sensitivity();
+else if (page === 'cs2' && moduleName === 'viewmodel') viewmodel();
+else if (moduleName === 'configs') configs();
+else crosshair();
+if (page === 'valorant' && moduleName === 'crosshair' && location.hash.startsWith('#code=')) {
+  try { importVAL(decodeURIComponent(location.hash.slice(6))); $('importStatus').textContent='Perfil aberto para edição.'; $('vColor').dispatchEvent(new Event('input')); } catch (err) { notify(err.message); }
+}
+if (page === 'valorant' && query.get('load') === '1' && $('loadLocal')) $('loadLocal').click();
