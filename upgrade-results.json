@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "date": "2026-10-09T22:52:09.980Z",
+  "checks": [
+    "Dot export removes arms; opacity command; previous preset backup",
+    "Saved crosshair included; corrupt saved CFG values block download",
+    "VAL omitted fields reset; duplicate fields atomic; library editing",
+    "48 conversion round trips; custom yaw; destination save; draft persistence",
+    "R6 slider rounding; stale measurement cleared; invalid measurement rejected",
+    "Guided calibration survives reload",
+    "Comparison history can reopen saved values",
+    "Workspace export, restore, prior data backup and invalid restore atomicity",
+    "Invalid module fallback; illustrated viewmodel responds to FOV"
+  ],
+  "pageErrors": [],
+  "scope": "Browser behavior and mathematical consistency; game engine acceptance requires in-game testing"
+}

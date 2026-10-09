@@ -1,4 +1,4 @@
-# Design system V4
+# Design system V4.1
 
 Core Signal contribui com clareza, espaçamento e wordmark sóbrio. Void Axis contribui com o símbolo angular. A construção é original, sem reutilização de imagens conceituais.
 
@@ -6,18 +6,18 @@ Core Signal contribui com clareza, espaçamento e wordmark sóbrio. Void Axis co
 
 | Papel | Valor |
 |---|---|
-| Fundo | `#0b0c10` |
-| Superfície | `#111218` |
-| Controle / superfície elevada | `#181920` |
-| Linha | `#272831` |
+| Fundo | `#08080d` |
+| Superfície | `#111019` |
+| Controle / superfície elevada | `#1a1725` |
+| Linha | `#302a40` |
 | Texto principal | `#f1f1f5` |
-| Texto secundário | `#9b9ba9` |
+| Texto secundário | `#b0a9bf` |
 | Acento | `#a393ff` |
-| Fundo de seleção | `#242033` |
+| Fundo de seleção | `#272039` |
 | Sucesso | `#8bd6b0` |
 | Erro | `#ff9caa` |
 
-Tipografia: Inter quando disponível, Segoe UI/Arial como fallback local; Cascadia Code/Consolas para valores, códigos e metadados. Nenhuma fonte remota obrigatória. Títulos 40 px desktop / 32 px mobile; corpo 14 px; campos 12 px; metadados 10–11 px. Escala de espaçamento: 4, 8, 12, 16, 24, 32, 48, 64 px. Raio 12 px para painéis e 6–7 px para controles.
+Tipografia: Inter quando disponível, Segoe UI/Arial como fallback local; Cascadia Code/Consolas para valores, códigos e metadados. Nenhuma fonte remota obrigatória. Títulos 40 px desktop / 32 px mobile; corpo 14 px; campos 12 px; metadados 10–11 px. Escala de espaçamento: 4, 8, 12, 16, 24, 32, 48, 64 px. Raio 16 px para painéis e 6–7 px para controles.
 
 ## Componentes
 
@@ -41,3 +41,7 @@ Preview acima dos controles abaixo de 900 px. Sidebar vira menu abaixo de 650 px
 ## Marca
 
 `assets/symbol.svg`: símbolo separado e favicon, viewBox 64 × 64. `assets/wordmark.svg`: marca horizontal em vetor com texto editável e fontes comuns. Use a versão HTML do header quando desejar herdar a tipografia da aplicação. O símbolo tem uma abertura central e eixo superior independente; preserve a proporção e não aplique gradiente no wordmark.
+
+## Revisão 4.1
+
+Painéis com roxo discreto, fundos em gradiente, estado ativo com barra lateral, dashboard de setups, modal de backup e rifle em SVG próprio. Tipografia continua local, controles touch têm altura mínima e movimento reduzido desativa transições.

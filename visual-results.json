@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "date": "2026-10-09T22:52:52.943Z",
+  "checks": [
+    "Refined logo and wordmark load at large and small sizes",
+    "CS2/VAL crosshairs stay centered at zoom 4; zoom does not change exports",
+    "Viewmodel render loaded, hand mirror and all five aspect modes update",
+    "12 preview viewport combinations: images load, no overflow, usable preview area"
+  ],
+  "pageErrors": []
+}

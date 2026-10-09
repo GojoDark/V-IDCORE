@@ -1,23 +1,87 @@
 <!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#0b0c10" />
-    <meta
-      name="description"
-      content="VØIDCORE V4 — ferramentas de precisão para CS2, VALORANT e Rainbow Six Siege."
-    />
-    <title>VØIDCORE — Tools for a higher standard</title>
-    <link rel="icon" href="assets/symbol.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
-    <script defer src="engine.js"></script>
-    <script defer src="app.js"></script>
-  </head>
-  <body>
-    <a class="skip" href="#main">Pular para o conteúdo</a>
-    <div id="app"></div>
-    <div id="toast" role="status" aria-live="polite"></div>
-    <noscript>Ative JavaScript para usar as ferramentas VØIDCORE.</noscript>
-  </body>
-</html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS2 CORE V3 — VØIDCORE</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><a class="brand" href="index.html"><span>VØID</span>CORE</a><nav class="core-nav" data-active="cs2"><span class="nav-indicator" aria-hidden="true"></span><a data-core="cs2" href="cs2.html">CS2</a><a data-core="valorant" href="valorant.html">VALORANT</a><a data-core="r6" href="r6.html">R6</a><a data-core="lab" class="lablink" href="lab.html">VØID LAB</a></nav></header>
+<main>
+<section class="section">
+  <div class="section-head"><div><small>COUNTER-STRIKE 2 / V3</small><h2>CS2 CORE</h2><p class="muted">Mira, sensibilidade, viewmodel e aspecto com preview visual inspirado em uma partida real.</p></div><span class="pill">LIVE PREVIEW</span></div>
+  <div class="grid">
+    <article class="tool hero-tool">
+      <div class="tool-title"><div><div class="kicker">CROSSHAIR STUDIO</div><h3>Mira — estilos atuais + simulador em mapa</h3></div><span class="pixel-badge">V3</span></div>
+      <div class="cross-layout">
+        <div class="controls">
+          <label>Estilo <select id="csStyle">
+            <option value="static">Cruz estática</option><option value="circleStatic">Círculo estático</option><option value="square">Quadrado estático</option><option value="dotOnly">Apenas ponto</option><option value="staticQuad">Static Quadrant</option><option value="dynamic">Cruz dinâmica</option><option value="circleDynamic">Círculo dinâmico</option><option value="classicDynamic">Cruz dinâmica (clássica)</option><option value="responsiveDynamic">Cruz dinâmica (disparo responsivo)</option><option value="dynamicQuad">Dynamic Quadrant</option>
+          </select></label>
+          <label id="csSizeRow">Tamanho <span><input id="csSize" type="range" min="1" max="36" step="1" value="8"><b id="csSizeV">8 px</b></span></label>
+          <label id="csGapRow">Gap / espaçamento <span><input id="csGap" type="range" min="-10" max="30" step="1" value="4"><b id="csGapV">4 px</b></span></label>
+          <label>Espessura <span><input id="csThick" type="range" min="1" max="8" step="1" value="2"><b id="csThickV">2 px</b></span></label>
+          <label id="csQuadrantRow">Quadrant Size <span><input id="csQuadrant" type="range" min="2" max="24" step="1" value="8"><b id="csQuadrantV">8 px</b></span></label>
+          <label>Cor <input id="csColor" type="color" value="#b34cff"></label>
+          <label>Transparência <span><input id="csAlpha" type="range" min="20" max="100" step="1" value="100"><b id="csAlphaV">100%</b></span></label>
+          <label>Contorno <select id="csOutlineMode"><option value="full">Completo</option><option value="half">Meio contorno</option><option value="none">Sem contorno</option></select></label>
+          <label>Cor do contorno <input id="csOutlineColor" type="color" value="#000000"></label>
+          <label>Transparência do contorno <span><input id="csOutlineAlpha" type="range" min="20" max="100" step="1" value="100"><b id="csOutlineAlphaV">100%</b></span></label>
+          <label id="csScopeColorRow">Manter cor da mira na luneta <input id="csScopeColor" type="checkbox" checked></label>
+          <label id="csDotRow">Ponto central <input id="csDot" type="checkbox"></label>
+          <label id="csSpreadRow">Limite da variação dinâmica <span><input id="csSpread" type="range" min="64" max="320" step="1" value="242"><b id="csSpreadV">242 px</b></span></label>
+          <label id="csSplitRow" class="hidden">Distância de separação <span><input id="csSplit" type="range" min="0" max="20" step="1" value="7"><b id="csSplitV">7 px</b></span></label>
+          <label id="csInnerAlphaRow" class="hidden">Alfa do pedaço interior <span><input id="csInnerAlpha" type="range" min="0" max="100" step="1" value="100"><b id="csInnerAlphaV">100%</b></span></label>
+          <label id="csTStyleRow">Estilo em T <input id="csTStyle" type="checkbox"></label>
+          <label id="csScopeScaleRow">Escala do ponto da luneta <span><input id="csScopeScale" type="range" min="0.05" max="1" step="0.01" value="0.16"><b id="csScopeScaleV">0.16</b></span></label>
+          <label id="csFollowRecoilRow" class="hidden">Seguir coice <input id="csFollowRecoil" type="checkbox"></label>
+          <label>Cenário <select id="csScene"><option value="dust">Deserto / Dust-like</option><option value="mirage">Cidade / Mirage-like</option><option value="inferno">Vila / Inferno-like</option><option value="dark">Área escura</option></select></label>
+          <label>Resolução <select id="csResolution"><option value="1280x720">1280×720</option><option value="1280x960">1280×960</option><option value="1440x1080">1440×1080</option><option value="1920x1080" selected>1920×1080</option><option value="2560x1440">2560×1440</option></select></label>
+        </div>
+        <div>
+          <div class="preview cs-preview map-dust" id="csPreview"><div class="map-geometry"><span class="map-wall"></span><span class="map-box"></span><span class="map-door"></span><span class="map-target"></span></div><div class="preview-meta"><span id="csResLabel">1920×1080</span><span id="csStateLabel">PARADO</span></div><div id="csCross" class="crosshair cs-pixel-cross"></div><div class="shot-flash" id="csShotFlash"></div></div>
+          <div class="preview-states"><button type="button" class="state active" data-cs-state="idle">PARADO</button><button type="button" class="state" data-cs-state="move">CORRENDO</button><button type="button" class="state" data-cs-state="fire">ATIRANDO</button><button type="button" class="state" data-cs-state="auto">AUTO</button></div>
+          <div class="preset-row"><button type="button" data-cross-preset="precision">PRECISÃO</button><button type="button" data-cross-preset="spray">SPRAY</button><button type="button" data-cross-preset="dot">DOT</button><button type="button" data-cross-preset="quadrant">QUADRANT</button></div>
+        </div>
+      </div>
+      <div class="notice"><b>Fidelidade V3.1:</b> controles e geometrias foram revisados contra o menu atual do CS2 e as notas oficiais de setembro/2026. O cenário é uma simulação própria. Onde a Valve não expõe uma cvar/documentação pública suficiente, o VØIDCORE marca como simulação e não inventa comando.</div>
+      <div class="split-actions">
+        <div><div class="code-head"><span>COMANDOS CS2</span><small>somente cvars compatíveis</small></div><code id="csCode"></code><button onclick="copyText($('csCode').textContent,this)">Copiar comandos</button></div>
+        <div><div class="code-head"><span>IMPORTAR COMANDOS</span><small>cole cl_crosshair...</small></div><textarea id="csImport" class="config-area" placeholder="cl_crosshairsize 2.5; cl_crosshairgap -2; ..."></textarea><div class="inline-actions"><button id="csImportBtn" type="button">Importar</button><button id="csSavePreset" type="button">Salvar preset</button><button id="csLoadPreset" type="button">Carregar salvo</button></div><small id="csImportStatus" class="muted"></small></div>
+      </div>
+    </article>
+
+    <article class="tool"><div class="tool-title"><div><div class="kicker">AIM / PHYSICAL SCALE</div><h3>Sensibilidade + Advisor</h3></div><span class="pixel-badge">360°</span></div><label class="row">DPI <input id="csDpi" type="number" min="1" value="2000"></label><label class="row">Sens CS2 <input id="csSens" type="number" min="0.001" step=".001" value=".8"></label><label class="row">Objetivo <select id="csGoal"><option value="balanced">Aim geral</option><option value="recoil">Recoil / microajuste</option><option value="flick">Flick / AWP</option><option value="tracking">Tracking</option></select></label><label class="row">Estilo <select id="csAimStyle"><option value="hybrid">Braço + pulso</option><option value="arm">Braço</option><option value="wrist">Pulso</option></select></label><label class="row">Mousepad útil <select id="csPad"><option value="large">Grande (40+ cm)</option><option value="medium" selected>Médio (30–39 cm)</option><option value="small">Pequeno (&lt;30 cm)</option></select></label><div class="statrow"><div class="stat"><small>eDPI</small><b id="csEdpi">—</b></div><div class="stat"><small>Distância física</small><b id="csCm">—</b></div><div class="stat"><small>Perfil</small><b id="csSensProfile">—</b></div></div><div class="notice" id="csAdvice">Analisando...</div><div class="code-head"><span>FAIXA DE TESTE</span><small>ponto de partida</small></div><strong id="csTestRange">—</strong><p class="muted" id="csTradeoff"></p><a class="btn" href="lab.html">Abrir conversor no LAB →</a></article>
+
+    <article class="tool"><h3>Preview de referência</h3><p>O editor trabalha com escala visual. A mira final pode variar conforme resolução, escala e comportamento interno do CS2.</p><div class="statrow"><div class="stat"><small>Referência</small><b id="csScaleBase">1920×1080</b></div><div class="stat"><small>Preview</small><b>Dinâmico</b></div><div class="stat"><small>Mapa</small><b>Simulado</b></div></div></article>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><small>VIEWMODEL / SCREEN</small><h2>Viewmodel Studio</h2><p class="muted">Veja a arma mudando em primeira pessoa enquanto ajusta FOV, offsets e aspecto.</p></div><span class="pill">FIRST PERSON</span></div>
+  <div class="grid">
+    <article class="tool hero-tool vm-v3-card">
+      <div class="vm-v3-layout">
+        <div class="controls">
+          <label>Viewmodel FOV <span><input id="vmFov" type="range" min="54" max="68" step="1" value="68"><b id="vmFovV">68</b></span></label>
+          <label>Offset X <span><input id="vmX" type="range" min="-2.5" max="2.5" step=".1" value="2.5"><b id="vmXV">2.5</b></span></label>
+          <label>Offset Y <span><input id="vmY" type="range" min="-2" max="2" step=".1" value="0"><b id="vmYV">0</b></span></label>
+          <label>Offset Z <span><input id="vmZ" type="range" min="-2" max="2" step=".1" value="-1.5"><b id="vmZV">-1.5</b></span></label>
+          <label>Aspecto / tela <select id="vmAspect"><option value="16-9">16:9</option><option value="16-10">16:10</option><option value="4-3-stretched">4:3 Stretched</option><option value="4-3-bars">4:3 Black Bars</option><option value="5-4-stretched">5:4 Stretched</option></select></label>
+          <label>Mão no preview <select id="vmHand"><option value="right">Direita</option><option value="left">Esquerda</option></select></label>
+          <label>Cenário <select id="vmScene"><option value="dust">Deserto</option><option value="mirage">Cidade</option><option value="inferno">Vila</option><option value="dark">Escuro</option></select></label>
+          <div class="preset-row"><button type="button" data-vm-preset="classic">CLÁSSICO</button><button type="button" data-vm-preset="wide">ABERTO</button><button type="button" data-vm-preset="compact">COMPACTO</button><button type="button" data-vm-preset="center">CENTRAL</button></div>
+        </div>
+        <div>
+          <div class="vm-stage-v3 map-dust" id="vmStage"><div class="world-lines"><span></span><span></span><span></span></div><div class="vm-scene-target"></div><div class="vm-gun-v3" id="vmGun"><i class="vm-arm-back"></i><i class="vm-weapon-stock"></i><i class="vm-weapon-body"></i><i class="vm-weapon-mag"></i><i class="vm-weapon-barrel"></i><i class="vm-hand-front"></i></div><div class="vm-screen-label"><span id="vmAspectLabel">16:9</span><span>PREVIEW APROXIMADO</span></div></div>
+          <div class="vm-diff"><span>MENOR FOV / ARMA MAIOR</span><span>MAIOR FOV / ARMA MENOR</span></div>
+        </div>
+      </div>
+      <div class="statrow"><div class="stat"><small>Viewmodel</small><b id="vmProfile">68 / +2.5 / 0 / -1.5</b></div><div class="stat"><small>Aspecto</small><b id="vmAspectStat">16:9</b></div><div class="stat"><small>Mão</small><b id="vmHandStat">Direita</b></div></div>
+      <div class="notice">Aqui “FOV” é <b>viewmodel_fov</b>, não o FOV do mundo. Aspect ratio altera a percepção e o enquadramento; o preview é visual e não substitui o motor do jogo.</div>
+      <code id="vmCode"></code><button onclick="copyText($('vmCode').textContent,this)">Copiar viewmodel</button>
+    </article>
+  </div>
+</section>
+
+<section class="section"><div class="section-head"><div><small>CONFIG / CONTROL</small><h2>CS2 Toolkit</h2><p class="muted">Autoexec, binds e performance.</p></div><span class="pill">BUILD & COPY</span></div><div class="grid">
+<article class="tool wide"><div class="tool-title"><div><div class="kicker">AUTOEXEC</div><h3>Autoexec Builder</h3></div><span class="pixel-badge">.CFG</span></div><label class="row">FPS máximo <input id="aeFps" type="number" min="0" value="300"></label><label class="row">FPS no menu <input id="aeFpsUi" type="number" min="0" value="120"></label><label class="row">Console na tecla <select id="aeConsole"><option value="F10">F10</option><option value="F11">F11</option><option value="F12">F12</option></select></label><label class="row">Incluir sens atual <input id="aeSens" type="checkbox" checked></label><label class="row">Incluir viewmodel <input id="aeVm" type="checkbox" checked></label><div class="code-head"><span>AUTOEXEC.CFG</span><small>somente comandos gerados nesta página</small></div><code id="aeCode"></code><button onclick="copyText($('aeCode').textContent,this)">Copiar autoexec</button></article>
+<article class="tool"><div class="kicker">BINDS</div><h3>Bind Builder</h3><label class="row">Tecla <input id="bindKey" type="text" maxlength="12" value="j"></label><label class="row">Ação <select id="bindAction"><option value="+jump">Pular</option><option value="slot1">Arma primária</option><option value="slot2">Pistola</option><option value="slot3">Faca</option><option value="lastinv">Última arma</option><option value="drop">Dropar arma</option><option value="+use">Usar</option><option value="buymenu">Menu de compra</option><option value="player_ping">Ping</option><option value="toggleconsole">Console</option></select></label><code id="bindCode"></code><button onclick="copyText($('bindCode').textContent,this)">Copiar bind</button></article>
+<article class="tool wide"><div class="tool-title"><div><div class="kicker">PERFORMANCE</div><h3>Performance Advisor</h3></div><span class="pixel-badge">FPS</span></div><label class="row">GPU <select id="perfGpu"><option value="low">Entrada / antiga</option><option value="mid" selected>Intermediária</option><option value="high">Alta</option></select></label><label class="row">CPU <select id="perfCpu"><option value="old" selected>6c/6t ou similar</option><option value="modern">6c/12t+ moderna</option><option value="high">High-end</option></select></label><label class="row">Monitor <select id="perfHz"><option>60</option><option>144</option><option selected>180</option><option>240</option><option>360</option></select></label><label class="row">Prioridade <select id="perfGoal"><option value="fps">FPS / competitivo</option><option value="balanced">Equilibrado</option><option value="quality">Qualidade</option></select></label><div class="statrow"><div class="stat"><small>Preset</small><b id="perfPreset">—</b></div><div class="stat"><small>FPS cap inicial</small><b id="perfCap">—</b></div><div class="stat"><small>Foco</small><b id="perfFocus">—</b></div></div><div class="notice" id="perfAdvice"></div></article>
+</div></section>
+</main><footer><b>VØIDCORE / CS2 V3</b><span>Precision. Performance. Control.</span></footer><script src="app.js"></script></body></html>

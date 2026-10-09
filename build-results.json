@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "type": "Static distribution validation (no transpilation required)",
+  "pages": 8,
+  "files": {
+    "index.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "cs2.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "valorant.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "r6.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "sensi.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "lab.html": "06222f09d8d91ccb493eff30a5f7b99bceb0e48808b1bef9b88f61d0734e80ad",
+    "design-system.html": "75fa19c787fa84832fde992affd0f37016527060c90bac5cc49315beac8cc3f7",
+    "logo-preview.html": "0054475d98d30f729b6c5e7030b340494cf4ff3503b974a2c5d2335cc23d9b86",
+    "app.js": "00872372e30f8cbf879856bea236fb858c3165c2d5be93721df4ce54222d931e",
+    "engine.js": "f33ab8f857198d1ba5258b1767adfe4ab2beb5fe7985dc59c43444082f3e11c8",
+    "style.css": "b4d4c69cf05c8104795b68bc7314a8a4089f49d7945119d288c4c3e8b322a8ac",
+    "assets/symbol.svg": "56592c3093f5c8328bfa3e27e619d960f7a8bbfc124155127d4450f3a89f9608",
+    "assets/wordmark.svg": "b86a0f27a46ebde90de8b8d7d81a4747701b7d5ecbf9cd07ad367601918331e9",
+    "assets/viewmodel.svg": "9133bcb4d026043de056cd5085d2d0922d0f00fd94e58f55d9639998af63ff4a",
+    "assets/viewmodel-render.png": "4d10b87fdca8120882ffd1f009ac162983af725e39c8818ac352cc9b55eb28a2",
+    "assets/viewmodel-ak47.png": "5ceda592faacdf05209982aeb44c19875d4408108b3b140690e12310785f56b3",
+    "assets/range-render.png": "9d0adfe9ef11115454f9e56ce822618ad3775c1195653ad5b28aebecbbaffa90"
+  }
+}

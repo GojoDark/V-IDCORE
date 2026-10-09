@@ -1,10 +1,11 @@
 {
   "name": "voidcore-v4",
-  "version": "4.0.0",
+  "version": "4.3.0",
   "private": true,
-  "description": "Static V\u00d8IDCORE V4 workspace. Playwright is only needed for optional regression tests.",
+  "description": "V\u00d8IDCORE static precision workspace, with browser regression and static build validation.",
   "scripts": {
-    "test": "node tests/regression.cjs"
+    "test": "node tests/regression.cjs && node tests/upgrade.cjs && node tests/visual.cjs",
+    "build": "node tests/build.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

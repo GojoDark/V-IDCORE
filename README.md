@@ -1,54 +1,47 @@
-# VØIDCORE V4
+# VØIDCORE V4.3
 
-Rebuild de UX/UI do [V-IDCORE](https://github.com/GojoDark/V-IDCORE), a partir do commit `b67bed4a4c00a4bd57fe2e91997ac7742bed8775`, recuperado em 05/10/2026.
+Revisão do código real de https://github.com/GojoDark/V-IDCORE, recuperado em 09/10/2026. O `app.js` remoto tinha o mesmo SHA-256 do pacote V4 original: `DCFCBBB39F377ADC2A448A36CA35BEEE78DB453F661FC6B3C6C928616C1BB606`.
 
 ## Abrir
 
-Abra `index.html` no navegador. Não há instalação, dependências externas ou build obrigatório. Os arquivos funcionam como um site estático e podem substituir a versão anterior no GitHub Pages. Para testar compartilhamento entre pessoas, hospede a pasta inteira; links `file://` são locais.
+Abra `index.html`. A distribuição é estática, gratuita e não exige instalação, conta, backend ou fontes remotas. Para links compartilháveis entre pessoas, hospede a pasta inteira; links file:// continuam locais.
 
-## O que mudou
+## Módulos revisados
 
-- Identidade original em SVG: símbolo angular separado, wordmark VØIDCORE, preto/grafite e violeta moderado.
-- Home com entrada direta nos quatro workspaces, sem blocos redundantes ou espaços de anúncio.
-- CS2 com Crosshair, Sensitivity, Viewmodel e Configs separados por intenção.
-- VALORANT com Crosshair, Sensitivity e biblioteca Configs.
-- R6 com análise de hipfire e multiplier, sem ADS inventado.
-- Sensi Hub com calibração em três etapas, conversão isolada e comparação A/B com histórico.
-- Preview dominante, controles laterais, campos condicionais e ajustes avançados recolhidos.
-- Importação atômica e validada: um campo inválido não aplica o restante do preset.
-- Opacidade zero preservada; entradas inválidas não deixam resultados anteriores aparentando estar válidos.
-- Clipboard com alternativa local, downloads CFG/JSON, presets locais e links compartilháveis.
+- Dashboard: preto/roxo, logo preservada, cartões dos setups salvos e atalhos claros.
+- CS2 Mira: ponto sem barras na exportação, alfa habilitado, cores predefinidas importadas, espessura/tamanho zero aceitos, importação atômica e JSON.
+- CS2 Sensibilidade: m_yaw configurável, cm/360 e faixas calculadas com o yaw real, validação e persistência.
+- Viewmodel: rifle e mãos em render PNG com transparência, FOV com escala trigonométrica, offsets, proporções distintas de 4:3 e 5:4, mão visual e exportação CFG validada.
+- CS2 Configurações: mira, sensibilidade, m_yaw e viewmodel salvos entram no autoexec. Valores salvos inválidos bloqueiam a exportação correspondente.
+- VALORANT Mira: importação não herda campos omitidos do preset anterior; campos duplicados e valores inválidos são rejeitados antes de qualquer alteração.
+- VALORANT Biblioteca: perfis podem ser copiados ou reabertos para edição.
+- R6: slider horizontal inteiro de 1–100, referência física medida, invalidação da medida ao alterar o setup e bloqueio de medida inválida.
+- Sensi Hub: conversão com DPI e yaw configurável, rascunho persistente, salvar no destino, slider R6 arredondado com distância estimada; calibração retomável; comparação A/B com yaw e histórico reabrível.
+- Backup global: exportação JSON, restauração com validação preliminar e cópia do estado anterior. Ao salvar, o valor anterior da chave também é preservado com sufixo `_backup`.
+- Navegação: módulos em português, seleção consistente, fallback para módulo desconhecido, menu mobile e respeito a movimento reduzido.
 
-## Lógica e pesquisa preservadas
+## Dados e hospedagem
 
-`engine.js` consolida as últimas versões dos renderizadores CS2 e VALORANT presentes no `app.js` original, incluindo os dez estilos CS2 e comportamento por estado. Mantém a fórmula `914.4 / (DPI × sens × yaw)`, CS2 `0.022`, VALORANT `0.07`, inversão matemática, presets, faixas heurísticas do Advisor e refinamento iterativo do Sens Finder (`55–145%`, corte pela resposta e faixa ±6% ao responder “boa”). O Advisor de performance permanece dentro de Configs, explicitamente como orientação heurística, não benchmark.
+As chaves v4 foram mantidas. localStorage pertence à origem do navegador: mudar de domínio ou de porta não transfere os dados. Use Backup na instalação anterior e restaure na nova. Guarde o JSON antes de substituir arquivos no seu site. Não houve publicação nem alteração do repositório remoto.
 
-As quatro cenas são próprias e aproximadas. Resolução é referência de interface, não emulação de rasterização do jogo. Campos de luneta/coice cujo efeito não era implementado na V3 continuam como referência visual e não entram em comandos inventados. O export CS2 limita-se aos comandos suportados pelo editor. Geometrias novas sem equivalência de cvar não são prometidas na exportação.
+## Validar
 
-O codec VALORANT mantém o mapeamento principal da V3, com validação de limites e suporte às cores indexadas na importação. Campos de ADS/sniper não mapeados são informados como não importados; o editor não promete preservar esses campos no código regenerado. Verifique o código dentro do jogo: os testes validam o editor e seu round trip, não executam VALORANT.
+Com Node e Playwright disponíveis: `npm test` e `npm run build`. Os resultados executados estão em `tests/test-results.json`, `tests/upgrade-results.json` e `tests/build-results.json`. O build verifica a distribuição estática; não há transpilar nem bundler obrigatório.
 
-### R6: ajuste necessário de precisão
+Veja `VALIDATION.md` para as evidências e os limites. Nenhum dos três jogos foi executado nesta revisão.
 
-A V3 tratava `MouseSensitivityMultiplierUnit` diretamente como yaw em graus, sem um fator de entrada angular estabelecido. A [documentação oficial da Ubisoft](https://www.ubisoft.com/en-gb/game/rainbow-six/siege/news-updates/6kY6b5JByBY3P6vQWWinla/fov-and-input-sensitivity) define o hipfire como entrada multiplicada por sensibilidade e multiplier. Ela não fundamenta a distância absoluta que a V3 calculava.
+## Revisão visual 4.2
 
-A V4 mantém o modificador de entrada `sens × multiplier` e o game-eDPI. Para comparação física ou conversão com R6, pede cm/360° medidos no jogo. Para converter para R6, usa uma referência medida de sensibilidade e DPI, com multiplier constante:
+Os previews usam um cenário renderizado com perspectiva, materiais e iluminação natural, em vez do cenário wireframe. A mira continua sendo gerada ao vivo pelos controles, com zoom 1×/2×/4× que não altera os valores exportados. Os modos de cenário variam a iluminação do mesmo estúdio fictício.
 
-`sens destino = sens referência × DPI referência × cm referência / (DPI destino × cm desejado)`
+O viewmodel substitui o rifle poligonal por um render detalhado de arma, luvas e mangas com canal alfa preservado. O enquadramento responde ao FOV, offsets, mão e proporção, incluindo resize. É uma composição ilustrativa 2D; não reproduz o motor Source 2.
 
-Esse cálculo relativo não pressupõe uma escala angular não validada. ADS continua fora do escopo. O snapshot integral da V3 está em `source-v3/` para rastreabilidade e recuperação da lógica anterior.
+A logo foi redesenhada em SVG: V facetado, sem triângulo solto, e wordmark com letras próprias desenhadas em paths, independente de fontes instaladas. `logo-preview.html` mostra a apresentação da marca.
 
-### Viewmodel
+Testes visuais adicionais em `tests/visual-results.json`: centragem da mira, zoom sem alterar exportação, imagens carregadas, cinco proporções, espelhamento e 12 combinações de preview/largura. As suites anteriores também foram executadas novamente. `ASSETS.md` registra a origem e os prompts dos renders.
 
-O preview V4 é um volume abstrato, com direção de X/Y/Z, redução de escala ao aumentar FOV e referências de mão/aspecto. Não simula Source 2 nem é uma previsão exata da arma. Presets e comandos FOV/offsets da V3 foram preservados.
+## Revisão 4.3 — AK em perspectiva de CS
 
-## Dados locais
+O rifle genérico foi substituído por `assets/viewmodel-ak47.png`, editado pela ferramenta integrada de imagens. A referência visual é a AK-47 de CS: metal escuro, madeira, carregador curvo, câmera atrás da arma, coronha fora da visão e mãos em luvas. O enquadramento ocupa a região inferior direita e foi ajustado após inspeção das capturas desktop/mobile. Não é um asset extraído do jogo nem um modelo 3D Source 2.
 
-V4 usa chaves próprias para setups, viewmodel e miras. A importação de mira CS2 reconhece a chave V3 `voidcore_cs2_crosshair_v3`. Configs VALORANT lê os perfis antigos `voidcore_val_presets`. O histórico A/B preserva `voidcore_sensi_history` (até 12 entradas). Não há conta, servidor de dados ou envio de presets.
-
-## Design system e verificação
-
-Consulte `DESIGN-SYSTEM.md` e abra `design-system.html` para ver cores, controles e estados. `VALIDATION.md` descreve os testes realizados e os limites de validação. `preview-home.png`, `preview-cs2.png` e `preview-mobile.png` mostram a interface verificada.
-
-## Reproduzir os testes (opcional)
-
-O site não exige Node. Para executar o conjunto de regressão, use Node, Chrome instalado e `npm install` seguido de `npm test`. Os testes iniciam um servidor local temporário na porta 4173, fecham o navegador ao terminar e gravam capturas e relatório.
+Nesta revisão foram executados novamente os testes visuais, a suite adicional de comportamento e o build estático. A suite original de 65 combinações permanece registrada na revisão 4.2. As versões anteriores foram preservadas.
